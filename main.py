@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import List, Optional
 import os
 
+import numpy as np
+
 # 将项目根目录添加到 Python 路径
 sys.path.append(str(Path(__file__).parent.parent))
 
@@ -16,6 +18,7 @@ from data_pipeline import DataPipeline
 from model_factory import ModelFactory
 from trainer import TrainingPipeline, Trainer
 from model_tester import ModelTester
+from visualizer import plot_pm
 
 
 class ExperimentRunner:
@@ -212,7 +215,6 @@ def create_custom_config():
     
     # 数据配置 - 使用不同的scaler和残差设置
     data_config = DataConfig(
-        experiment_model_dir="models",
         model_target_dir="models_refactored",
         dataset_path="eopc04_14_IAU2000.62-now.csv",
         train_ratio=0.75,
@@ -278,7 +280,7 @@ def train_main():
     
     print("Main function completed.")
 
-def test_main(modelpath:str = None):
+def test_main(model_path: str = None, data_index: int = -1):
     """测试主函数"""
     # 1. 使用默认配置
     print("Using default configuration...")
@@ -293,6 +295,9 @@ def test_main(modelpath:str = None):
             do_predict=[0, 0, 1],  # 仅预测测试集
             print_summary=True
         )
+        T_test = np.concatenate([test_results['data']['raw_data'][4], test_results['ground_truth']['test']], axis=1)
+        p_test = np.concatenate([test_results['data']['raw_data'][4], test_results['predictions']['test']], axis=1)
+        plot_pm(T_test, p_test, data_index)
     else:
         print(f"{model_path} doesn't exist!")
     
@@ -363,7 +368,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='模型训练/测试脚本')
     # 添加参数
     parser.add_argument('action', help='train or test')
-    parser.add_argument('--path', type=str, help='test model path')
+    parser.add_argument('--path', type=str, help='test model path', default=None)
+    parser.add_argument('--index', type=int, help='test data index', default=-1)
     # 解析参数
     args = parser.parse_args()
     if args.action == "train":
@@ -371,10 +377,7 @@ if __name__ == "__main__":
         train_main()
     elif args.action == "test":
         # 运行测试主程序
-        if args.path:
-            test_main(args.path)
-        else:
-            test_main()
+            test_main(model_path=args.path, data_index=args.index)
     
     # 或者运行scaler演示
     # demo_different_scalers()

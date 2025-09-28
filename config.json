@@ -1,0 +1,35 @@
+{
+  "data": {
+    "model_target_dir": "data/models_reproduce/residual-mse",
+    "dataset_path": "data/eopc04_14_IAU2000.62-now.csv",
+    "train_ratio": 0.75,
+    "val_ratio": 0.15,
+    "val_mix": false,
+    "residual_type": "both",
+    "use_scaler": true,
+    "scaler_type": "minmax",
+    "scaler_after_residual": false,
+    "scaler_params": {}
+  },
+  "model": {
+    "num_features": 2,
+    "lstm0": 64,
+    "lstm1": 64,
+    "lstm2": 32,
+    "attnhead": 2,
+    "attndim": 64,
+    "dropout0": 0.3,
+    "dropout1": 0.3,
+    "dropout2": 0.2
+  },
+  "training": {
+    "learning_rate": 1e-3,
+    "batch_size": 64,
+    "epochs": 50,
+    "shuffle": true,
+    "early_stop": 5,
+    "loss": "mae-corr",
+    "corr_alpha": 5e-4,
+    "metrics": "loss"
+  }
+}

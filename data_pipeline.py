@@ -253,6 +253,7 @@ class DataPipeline:
         # 存储原始分割数据，用于逆变换
         self.raw_splits = None
         self.raw_windows = None
+        self.raw_windows_scaled = None
         
     def prepare_datasets(self, csv_path: str, lookback: int, steps: int
                         ) -> Tuple[Tuple[np.ndarray, np.ndarray], ...]:
@@ -295,7 +296,13 @@ class DataPipeline:
         X_val_raw, y_val_raw = self.window_generator.create_sliding_windows(val_s, lookback, steps)
         X_test_raw, y_test_raw = self.window_generator.create_sliding_windows(test_s, lookback, steps)
         
-        self.raw_windows = (X_train_raw, y_train_raw, X_val_raw, y_val_raw, X_test_raw, y_test_raw)
+        self.raw_windows_scaled = (X_train_raw, y_train_raw, X_val_raw, y_val_raw, X_test_raw, y_test_raw)
+        self.raw_windows = (self.scaler.inverse_transform(X_train_raw),
+                            self.scaler.inverse_transform(y_train_raw),
+                            self.scaler.inverse_transform(X_val_raw),
+                            self.scaler.inverse_transform(y_val_raw),
+                            self.scaler.inverse_transform(X_test_raw),
+                            self.scaler.inverse_transform(y_test_raw))
         
         # 5. 残差处理
         X_train, y_train = self._apply_residual_transform(X_train_raw, y_train_raw)
@@ -362,7 +369,7 @@ class DataPipeline:
             residual_type = self.config.residual_type
             
         o_train, o_val, o_test = predictions
-        X_train_raw, y_train_raw, X_val_raw, y_val_raw, X_test_raw, y_test_raw = self.raw_windows
+        X_train_raw, y_train_raw, X_val_raw, y_val_raw, X_test_raw, y_test_raw = self.raw_windows_scaled
         
         # 逆缩放（如果在残差后应用了缩放）
         if self.config.use_scaler and self.config.scaler_after_residual:

@@ -2,6 +2,7 @@
 配置文件 - config.py
 """
 
+import json
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
@@ -10,22 +11,18 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
 @dataclass
 class DataConfig:
     """数据处理相关配置"""
-    # 文件路径
-    model_target_dir: str = "models_reproduce/residual-mse"
-    experiment_model_dir: str = "models"
-
+    model_target_dir: str = "data/models_reproduce/residual-mse"
     dataset_path: str = "data/eopc04_14_IAU2000.62-now.csv"
     train_ratio: float = 0.75
     val_ratio: float = 0.15
     val_mix: bool = False
-    residual_type: str = 'both'  # 'none', 'x', 'y', 'both'
-    
-    # Scaler相关配置
+    residual_type: str = "both"  # 'none', 'x', 'y', 'both'
+
     use_scaler: bool = True
-    scaler_type: str = 'minmax'  # 'minmax', 'standard', 'robust', 'none'
-    scaler_after_residual: bool = False  # 是否在residual处理后应用scaler
+    scaler_type: str = "minmax"  # 'minmax', 'standard', 'robust', 'none'
+    scaler_after_residual: bool = False
     scaler_params: Optional[Dict[str, Any]] = None
-    
+
     def __post_init__(self):
         if self.scaler_params is None:
             self.scaler_params = {}
@@ -53,27 +50,41 @@ class TrainingConfig:
     epochs: int = 50
     shuffle: bool = True
     early_stop: int = 5
-    loss: str = 'mae-corr'
+    loss: str = "mae-corr"
     corr_alpha: float = 5e-4
-    metrics: str = 'mae'
+    metrics: str = "loss"
 
 
 def get_scaler_class(scaler_type: str):
     """根据类型字符串返回scaler类"""
     scaler_map = {
-        'minmax': MinMaxScaler,
-        'standard': StandardScaler,
-        'robust': RobustScaler,
-        'none': None
+        "minmax": MinMaxScaler,
+        "standard": StandardScaler,
+        "robust": RobustScaler,
+        "none": None,
     }
-    
+
     if scaler_type not in scaler_map:
         raise ValueError(f"Unsupported scaler type: {scaler_type}")
-    
+
     return scaler_map[scaler_type]
 
 
-# 默认配置实例
-DEFAULT_DATA_CONFIG = DataConfig()
-DEFAULT_MODEL_CONFIG = ModelConfig()
-DEFAULT_TRAINING_CONFIG = TrainingConfig()
+def load_config(json_path: str):
+    """从 JSON 文件加载配置"""
+    with open(json_path, "r", encoding="utf-8") as f:
+        cfg = json.load(f)
+
+    data_cfg = DataConfig(**cfg.get("data", {}))
+    model_cfg = ModelConfig(**cfg.get("model", {}))
+    training_cfg = TrainingConfig(**cfg.get("training", {}))
+
+    return data_cfg, model_cfg, training_cfg
+
+
+# 默认从 config.json 加载
+try:
+    DATA_CONFIG, MODEL_CONFIG, TRAINING_CONFIG = load_config("config.json")
+except FileNotFoundError:
+    print("⚠️ 未找到 config.json，使用默认配置")
+    DATA_CONFIG, MODEL_CONFIG, TRAINING_CONFIG = DataConfig(), ModelConfig(), TrainingConfig()

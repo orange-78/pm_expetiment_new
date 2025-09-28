@@ -138,10 +138,10 @@ class ModelTester:
         print(f"Detected lookback={lookback}, steps={steps}")
         
         # 3. 准备数据（使用相同的配置）
-        datasets, scaler, raw_data = self.data_pipeline.prepare_datasets(
+        (X_train, y_train), (X_val, y_val), (X_test, y_test), scaler, raw_data = self.data_pipeline.prepare_datasets(
             self.data_config.dataset_path, lookback, steps
         )
-        (X_train, y_train), (X_val, y_val), (X_test, y_test) = datasets
+        datasets = ((X_train, y_train), (X_val, y_val), (X_test, y_test))
         
         # 4. 进行预测
         predictions = {}

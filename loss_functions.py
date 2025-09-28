@@ -172,9 +172,39 @@ class LossFunctions:
             'corr': cls.corr_metric,
             'feature-corr': cls.feature_wise_corr_metric,
         }
-        if metrics_name == 'loss':
-            return cls.get_loss_function(kwargs.get('loss_name', 'mae'), **kwargs)
 
+        # 如果指定 metrics="loss"，则根据 loss_name 自动匹配指标
+        if metrics_name == 'loss':
+            loss_name = kwargs.get('loss_name', 'mae')
+
+            # loss → 推荐的 metrics 组合
+            loss_to_metrics = {
+                'mae': ['mae'],
+                'mse': ['mse'],
+                'mae_freq': ['mae', 'fft', 'phase'],
+                'mse-corr': ['mse', 'corr'],
+                'mae-corr': ['mae', 'corr'],
+                'huber-corr': ['mae', 'corr'],   # Huber ~ MAE
+                'focal-mse': ['mse'],
+                'quantile': ['mae'],             # 常用回归误差度量
+                'fft': ['fft'],
+                'phase': ['phase'],
+            }
+
+            if loss_name not in loss_to_metrics:
+                raise ValueError(f"Unknown loss name for metrics matching: {loss_name}")
+
+            selected_metrics = []
+            for m in loss_to_metrics[loss_name]:
+                if m in metric_map:
+                    selected_metrics.append(metric_map[m])
+                elif m == 'fft':
+                    selected_metrics.append(cls.fft_loss)
+                elif m == 'phase':
+                    selected_metrics.append(cls.phase_loss)
+            return selected_metrics
+
+        # 常规定义
         if metrics_name not in metric_map:
             raise ValueError(f"Unknown metric: {metrics_name}")
         return metric_map[metrics_name]
