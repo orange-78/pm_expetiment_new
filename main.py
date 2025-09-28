@@ -19,6 +19,7 @@ from model_factory import ModelFactory
 from trainer import TrainingPipeline, Trainer
 from model_tester import ModelTester
 from visualizer import plot_pm
+from config import DATA_CONFIG, MODEL_CONFIG, TRAINING_CONFIG
 
 
 class ExperimentRunner:
@@ -29,9 +30,9 @@ class ExperimentRunner:
                  model_config: Optional[ModelConfig] = None,
                  training_config: Optional[TrainingConfig] = None):
         
-        self.data_config = data_config or DataConfig()
-        self.model_config = model_config or ModelConfig()
-        self.training_config = training_config or TrainingConfig()
+        self.data_config = data_config or DATA_CONFIG
+        self.model_config = model_config or MODEL_CONFIG
+        self.training_config = training_config or TRAINING_CONFIG
         
         # 初始化组件
         self.data_pipeline = DataPipeline(self.data_config)
@@ -228,6 +229,7 @@ def create_custom_config():
     
     # 模型配置
     model_config = ModelConfig(
+        model_target_dir= "data/models_reproduce/residual-mse",
         lstm0=64,
         lstm1=64,
         lstm2=32,
@@ -265,8 +267,8 @@ def train_main():
     
     # 单个实验
     model, history, data_info = runner_default.single_experiment(
-        lookback=1100,
-        steps=1080,
+        lookback=80,
+        steps=40,
         model_name="default_model"
     )
     
@@ -287,7 +289,7 @@ def test_main(model_path: str = None, data_index: int = -1):
     runner_default = ExperimentRunner()
     # 2. 测试模型
     if not model_path:
-        model_path = select_h5_file(runner_default.data_config.model_target_dir, max_depth=5)
+        model_path = select_h5_file(runner_default.data_config.model_target_dir, max_depth=7)
     if os.path.exists(model_path):
         print("Testing existing model...")
         test_results = runner_default.test_model(

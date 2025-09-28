@@ -23,12 +23,13 @@
     "dropout2": 0.2
   },
   "training": {
+    "model_target_dir": "data/models_reproduce/residual-mae",
     "learning_rate": 1e-3,
     "batch_size": 64,
     "epochs": 50,
     "shuffle": true,
     "early_stop": 5,
-    "loss": "mae-corr",
+    "loss": "mae",  // 'mae','mse','mae_freq','mse-corr','mae-corr','huber-corr','focal-mse','quantile','fft','phase'
     "corr_alpha": 5e-4,
     "metrics": "loss"
   }

@@ -11,7 +11,8 @@ from tensorflow.keras.models import Model # type: ignore
 from tf_singleton import tf
 from config import TrainingConfig
 from loss_functions import LossFunctions
-
+from data_pipeline import DataPipeline
+from model_factory import ModelFactory
 
 class Trainer:
     """模型训练器"""
@@ -122,9 +123,9 @@ class TrainingPipeline:
     """完整的训练流程"""
     
     def __init__(self, data_pipeline, model_factory, trainer):
-        self.data_pipeline = data_pipeline
-        self.model_factory = model_factory
-        self.trainer = trainer
+        self.data_pipeline: DataPipeline = data_pipeline
+        self.model_factory: ModelFactory = model_factory
+        self.trainer: Trainer = trainer
     
     def run_training(self,
                     model_type: str,
@@ -149,10 +150,10 @@ class TrainingPipeline:
         """
         
         # 1. 准备数据
-        datasets, scaler, raw_data = self.data_pipeline.prepare_datasets(
+        (X_train, y_train), (X_val, y_val), (X_test, y_test), scaler, raw_data = self.data_pipeline.prepare_datasets(
             self.data_pipeline.config.dataset_path, lookback, steps
         )
-        (X_train, y_train), (X_val, y_val), (X_test, y_test) = datasets
+        datasets = ((X_train, y_train), (X_val, y_val), (X_test, y_test))
         
         print(f"Data prepared: Train={X_train.shape}, Val={X_val.shape}, Test={X_test.shape}")
         

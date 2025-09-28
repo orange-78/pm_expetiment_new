@@ -2,7 +2,7 @@
 配置文件 - config.py
 """
 
-import json
+import json5 as json
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
@@ -45,6 +45,7 @@ class ModelConfig:
 @dataclass
 class TrainingConfig:
     """训练相关配置"""
+    model_target_dir: str = "data/models_reproduce/residual-mse"
     learning_rate: float = 1e-3
     batch_size: int = 64
     epochs: int = 50
