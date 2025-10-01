@@ -15,22 +15,28 @@ class ModelLoader:
     """模型加载器"""
     
     @staticmethod
-    def load_model(filepath: str):
-        """加载保存的模型"""
+    def load_model(filepath: str, custom_objects: dict = None):
+        """加载保存的模型（兼容 .keras 和 .h5）"""
+        from tensorflow import keras
+
+        # 自动判断格式
+        if filepath.endswith(".h5"):
+            print("⚠️ 检测到 .h5 格式，可能丢失部分 compile 信息，推荐改用 .keras。")
+
         try:
-            # 先尝试带 compile 加载
-            model = tf.keras.models.load_model(filepath, compile=True)
+            # 优先带 compile 加载
+            model = keras.models.load_model(filepath, compile=True, custom_objects=custom_objects)
             if model.optimizer is not None and model.loss is not None:
-                print("模型已包含 optimizer 和 loss，使用保存时配置。")
+                print("✅ 模型已包含 optimizer 和 loss，使用保存时配置。")
                 return model
         except Exception as e:
             print(f"加载时未检测到完整编译信息，错误信息: {e}")
         
         # 如果上面失败，则手动 compile
-        print("模型未包含 optimizer/loss 信息，使用默认配置重新编译。")
-        model = tf.keras.models.load_model(filepath, compile=False)
+        print("⚠️ 模型未包含 optimizer/loss 信息，使用默认配置重新编译。")
+        model = keras.models.load_model(filepath, compile=False, custom_objects=custom_objects)
         model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+            optimizer=keras.optimizers.Adam(learning_rate=0.001),
             loss="mae",
             metrics=["mae"]
         )

@@ -51,6 +51,7 @@ class TrainingConfig:
     epochs: int = 50
     shuffle: bool = True
     early_stop: int = 5
+    monitor: str = "val_loss"
     loss: str = "mae-corr"
     corr_alpha: float = 5e-4
     metrics: str = "loss"
@@ -81,6 +82,22 @@ def load_config(json_path: str):
     training_cfg = TrainingConfig(**cfg.get("training", {}))
 
     return data_cfg, model_cfg, training_cfg
+
+def parse_scaler_params(params: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if params is None:
+        return None
+
+    parsed = {}
+    for k, v in params.items():
+        # 如果是字符串形式的 tuple
+        if isinstance(v, str) and v.startswith("(") and v.endswith(")"):
+            try:
+                parsed[k] = eval(v)  # 安全性考虑可以替换成 ast.literal_eval
+            except Exception as e:
+                raise ValueError(f"Invalid tuple format for {k}: {v}") from e
+        else:
+            parsed[k] = v
+    return parsed
 
 
 # 默认从 config.json 加载

@@ -128,16 +128,16 @@ class ExperimentRunner:
         return self.model_tester.run_evaluation(model_path, **kwargs)
 
 
-def select_h5_file(folder_paths, max_depth=3):
+def select_model_file(folder_paths, max_depth=3):
     """
-    在多个文件夹及其子目录中查找.h5文件，按字母顺序编号并让用户选择
+    在多个文件夹及其子目录中查找.h5或.keras文件，按字母顺序编号并让用户选择
     
     参数:
     folder_paths: 字符串或字符串列表，文件夹路径
     max_depth: int, 最大检索深度（默认3层）
     
     返回:
-    选择的.h5文件的绝对路径
+    选择的.h5或.keras文件的绝对路径
     """
     if isinstance(folder_paths, str):
         folder_paths = [folder_paths]  # 单个路径转为列表
@@ -162,7 +162,7 @@ def select_h5_file(folder_paths, max_depth=3):
                 dirs[:] = []  # 不再深入
                 continue
             for file in files:
-                if file.endswith(".h5"):
+                if file.endswith(".h5") or file.endswith(".keras"):
                     full_path = os.path.join(root, file)
                     relative_path = os.path.relpath(full_path, folder_path)
                     # 在相对路径前加上顶层目录名，避免冲突
@@ -173,11 +173,11 @@ def select_h5_file(folder_paths, max_depth=3):
     all_h5_files.sort(key=lambda x: x[0])
     
     if not all_h5_files:
-        print(f"在 {folder_paths} 及其 {max_depth} 层子目录中没有找到.h5文件")
+        print(f"在 {folder_paths} 及其 {max_depth} 层子目录中没有找到.h5或.keras文件")
         return None
     
     # 显示文件列表
-    print(f"在 {folder_paths} 及其 {max_depth} 层子目录中找到 {len(all_h5_files)} 个.h5文件:")
+    print(f"在 {folder_paths} 及其 {max_depth} 层子目录中找到 {len(all_h5_files)} 个.h5或.keras文件:")
     print("-" * 50)
     
     for i, (rel_path, _) in enumerate(all_h5_files, 1):
@@ -253,7 +253,13 @@ def create_custom_config():
     return data_config, model_config, training_config
 
 
-def train_main():
+def train_main(lookback: List[int],
+               steps: int,
+               model_name: str,
+               use_batch: bool,
+               interval: int,
+               start_at: int,
+               end_at: int):
     """训练主函数"""
     
     # 1. 使用默认配置
@@ -265,20 +271,26 @@ def train_main():
     # data_config, model_config, training_config = create_custom_config()
     # runner_custom = ExperimentRunner(data_config, model_config, training_config)
     
-    # 单个实验
-    model, history, data_info = runner_default.single_experiment(
-        lookback=80,
-        steps=40,
-        model_name="default_model"
-    )
-    
-    # 批量实验
-    # results = runner_default.batch_experiments(
-    #     lookbacks=[1100],
-    #     interval=30,
-    #     start_at=1080,
-    #     model_name_prefix="custom_model"
-    # )
+    if use_batch:
+        # 批量实验
+        results = runner_default.batch_experiments(
+            lookbacks=lookback,
+            interval=interval,
+            start_at=start_at,
+            end_at=[lookback[i] - end_at for i in range(len(lookback))] if end_at <= 0
+            else [end_at for i in range(len(lookback))],
+            model_name_prefix=model_name
+        )
+    else:
+        # 单个实验
+        if len(lookback) > 1:
+            print(f"only support single lookback when not batch mode, recieved {str(len(lookback))}")
+        else:
+            model, history, data_info = runner_default.single_experiment(
+                lookback=lookback[0],
+                steps=steps,
+                model_name=model_name
+            )
     
     print("Main function completed.")
 
@@ -289,19 +301,27 @@ def test_main(model_path: str = None, data_index: int = -1):
     runner_default = ExperimentRunner()
     # 2. 测试模型
     if not model_path:
-        model_path = select_h5_file(runner_default.data_config.model_target_dir, max_depth=7)
-    if os.path.exists(model_path):
-        print("Testing existing model...")
-        test_results = runner_default.test_model(
-            model_path=model_path,
-            do_predict=[0, 0, 1],  # 仅预测测试集
-            print_summary=True
-        )
-        T_test = np.concatenate([test_results['data']['raw_data'][4], test_results['ground_truth']['test']], axis=1)
-        p_test = np.concatenate([test_results['data']['raw_data'][4], test_results['predictions']['test']], axis=1)
-        plot_pm(T_test, p_test, data_index)
+        model_path = select_model_file(runner_default.data_config.model_target_dir, max_depth=7)
+        single_test = False
     else:
-        print(f"{model_path} doesn't exist!")
+        single_test = True
+    while model_path:
+        if os.path.exists(model_path):
+            print("Testing existing model...")
+            test_results = runner_default.test_model(
+                model_path=model_path,
+                do_predict=[0, 0, 1],  # 仅预测测试集
+                print_summary=True
+            )
+            T_test = np.concatenate([test_results['data']['raw_data'][4], test_results['ground_truth']['test']], axis=1)
+            p_test = np.concatenate([test_results['data']['raw_data'][4], test_results['predictions']['test']], axis=1)
+            plot_pm(T_test, p_test, data_index)
+        else:
+            print(f"{model_path} doesn't exist!")
+        if single_test:
+            break
+        else:
+            model_path = select_model_file(runner_default.data_config.model_target_dir, max_depth=7)
     
     print("Main function completed.")
 
@@ -370,16 +390,32 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='模型训练/测试脚本')
     # 添加参数
     parser.add_argument('action', help='train or test')
+    # 测试参数
     parser.add_argument('--path', type=str, help='test model path', default=None)
     parser.add_argument('--index', type=int, help='test data index', default=-1)
+    # 训练参数
+    parser.add_argument('--lookback', type=int, nargs='+', help='train lookback (int or list of int)', default=[200])
+    parser.add_argument('--steps', type=int, help='train steps', default=100)
+    parser.add_argument('--name', type=str, help='train model name', default='model')
+    parser.add_argument('--batch', action='store_true', help='train model with batch', default=False)
+    parser.add_argument('--interval', type=int, help='batch steps interval', default=100)
+    parser.add_argument('--startstep', type=int, help='batch steps start', default=0)
+    parser.add_argument('--endstep', type=int, help='batch steps end', default=0)
     # 解析参数
     args = parser.parse_args()
     if args.action == "train":
         # 运行训练主程序
-        train_main()
+        train_main(lookback=args.lookback,
+                   steps=args.steps,
+                   model_name=args.name,
+                   use_batch=args.batch,
+                   interval=args.interval,
+                   start_at=args.startstep,
+                   end_at=args.endstep)
     elif args.action == "test":
         # 运行测试主程序
-            test_main(model_path=args.path, data_index=args.index)
+            test_main(model_path=args.path,
+                      data_index=args.index)
     
     # 或者运行scaler演示
     # demo_different_scalers()

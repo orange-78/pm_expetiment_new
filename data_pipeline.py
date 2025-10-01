@@ -12,7 +12,7 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from fractions import Fraction
 from typing import Tuple, Dict, Optional, Any, Union
-from config import DataConfig, get_scaler_class
+from config import DataConfig, get_scaler_class, parse_scaler_params
 
 
 class DataLoader:
@@ -130,7 +130,8 @@ class DataScaler:
         if config.use_scaler and config.scaler_type != 'none':
             scaler_class = get_scaler_class(config.scaler_type)
             if scaler_class is not None:
-                self.scaler = scaler_class(**config.scaler_params)
+                scaler_params = parse_scaler_params(config.scaler_params)
+                self.scaler = scaler_class(**scaler_params)
     
     def fit_transform(self, train_data: np.ndarray) -> np.ndarray:
         """拟合并转换训练数据"""
@@ -297,12 +298,15 @@ class DataPipeline:
         X_test_raw, y_test_raw = self.window_generator.create_sliding_windows(test_s, lookback, steps)
         
         self.raw_windows_scaled = (X_train_raw, y_train_raw, X_val_raw, y_val_raw, X_test_raw, y_test_raw)
-        self.raw_windows = (self.scaler.inverse_transform(X_train_raw),
-                            self.scaler.inverse_transform(y_train_raw),
-                            self.scaler.inverse_transform(X_val_raw),
-                            self.scaler.inverse_transform(y_val_raw),
-                            self.scaler.inverse_transform(X_test_raw),
-                            self.scaler.inverse_transform(y_test_raw))
+        if self.config.use_scaler and not self.config.scaler_after_residual:
+            self.raw_windows = (self.scaler.inverse_transform(X_train_raw),
+                                self.scaler.inverse_transform(y_train_raw),
+                                self.scaler.inverse_transform(X_val_raw),
+                                self.scaler.inverse_transform(y_val_raw),
+                                self.scaler.inverse_transform(X_test_raw),
+                                self.scaler.inverse_transform(y_test_raw))
+        else:
+            self.raw_windows = self.raw_windows_scaled
         
         # 5. 残差处理
         X_train, y_train = self._apply_residual_transform(X_train_raw, y_train_raw)

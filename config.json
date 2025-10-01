@@ -1,15 +1,17 @@
 {
   "data": {
-    "model_target_dir": "data/models_reproduce/residual-mse",
+    "model_target_dir": "data/models_reproduce",
     "dataset_path": "data/eopc04_14_IAU2000.62-now.csv",
-    "train_ratio": 0.75,
+    "train_ratio": 0.70,
     "val_ratio": 0.15,
     "val_mix": false,
     "residual_type": "both",
     "use_scaler": true,
     "scaler_type": "minmax",
-    "scaler_after_residual": false,
-    "scaler_params": {}
+    "scaler_after_residual": true,
+    "scaler_params": {
+      "feature_range": "(-1, 1)"
+    }
   },
   "model": {
     "num_features": 2,
@@ -23,13 +25,14 @@
     "dropout2": 0.2
   },
   "training": {
-    "model_target_dir": "data/models_reproduce/residual-mae",
-    "learning_rate": 1e-3,
+    "model_target_dir": "data/models_reproduce/mse",
+    "learning_rate": 1e-4,
     "batch_size": 64,
     "epochs": 50,
     "shuffle": true,
     "early_stop": 5,
-    "loss": "mae",  // 'mae','mse','mae_freq','mse-corr','mae-corr','huber-corr','focal-mse','quantile','fft','phase'
+    "monitor": "val_mean_squared_error",  // 'val_loss','val_mean_absolute_error','val_mean_squared_error','val_root_mean_squared_error'
+    "loss": "mse",  // 'mae','mse','mae_freq','mse-corr','mae-corr','huber-corr','focal-mse','quantile','fft','phase'
     "corr_alpha": 5e-4,
     "metrics": "loss"
   }
