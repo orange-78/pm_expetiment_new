@@ -35,7 +35,7 @@ class Trainer:
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=self.config.learning_rate),
             loss=loss_func,
-            metrics=[metrics]
+            metrics=metrics
         )
         
         return model
