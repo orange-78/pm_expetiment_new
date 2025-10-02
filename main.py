@@ -93,7 +93,7 @@ class ExperimentRunner:
         results = []
         
         for i, lookback in enumerate(lookbacks):
-            max_steps = end_at[i] if i < len(end_at) else lookback
+            max_steps = min(end_at[i], lookback) if i < len(end_at) else lookback
             
             j = 1
             while interval * j <= max_steps:
