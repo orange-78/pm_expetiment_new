@@ -53,8 +53,9 @@ class TrainingConfig:
     early_stop: int = 5
     monitor: str = "val_loss"
     loss: str = "mae-corr"
-    corr_alpha: float = 5e-4
     metrics: str = "loss"
+    alpha: float = 5e-4
+    base_loss: str = "mse"
 
 
 def get_scaler_class(scaler_type: str):

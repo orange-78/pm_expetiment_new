@@ -24,7 +24,7 @@ class Trainer:
     def setup_model(self, model: Model) -> Model:
         """配置模型（编译）"""
         # 获取损失函数
-        loss_kwargs = {'alpha': self.config.corr_alpha} if 'corr' in self.config.loss else {}
+        loss_kwargs = {'alpha': self.config.alpha, 'base_loss': self.config.base_loss}
         loss_func = self.loss_functions.get_loss_function(self.config.loss, **loss_kwargs)
         
         # 获取评估指标

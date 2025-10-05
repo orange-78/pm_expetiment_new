@@ -133,6 +133,63 @@ class LossFunctions:
         return loss
 
     # -------------------------
+    # »ý·ÖÓòËðÊ§
+    # -------------------------
+    @staticmethod
+    def integrated_loss(base_loss="mae"):
+        """
+        »ý·ÖÓòËðÊ§£º½«Ô¤²âµÄ²î·ÖÐòÁÐ»ý·Ö»¹Ô­ÎªÔ­Ê¼ÐòÁÐ£¬ÔÙÓëÔ­Ê¼ÐòÁÐ±È½Ï
+        ×¢Òâ£ºy_true ºÍ y_pred ¶¼ÊÇ²î·ÖºóµÄÐòÁÐ£¬»ý·ÖÊ±´Ó 0 ¿ªÊ¼
+        """
+        def loss(y_true, y_pred):
+            # »ý·Ö»¹Ô­ (²î·Ö -> ÐòÁÐ)
+            x_true = tf.cumsum(y_true, axis=1)   # (batch, time, features)
+            x_pred = tf.cumsum(y_pred, axis=1)
+
+            if base_loss == "mae":
+                step_loss = tf.abs(x_true - x_pred)
+            elif base_loss == "mse":
+                step_loss = tf.square(x_true - x_pred)
+            else:
+                raise ValueError(f"Unsupported base_loss: {base_loss}")
+
+            time_avg = tf.reduce_mean(step_loss, axis=1)
+
+            # Æ½¾ùµ½ (batch, time, features) È«²¿Î¬¶È
+            return tf.reduce_mean(time_avg)
+        return loss
+
+    # -------------------------
+    # »ìºÏËðÊ§£º²î·ÖÓò + »ý·ÖÓò
+    # -------------------------
+    @staticmethod
+    def mixed_integrated_loss(alpha=0.5, base_loss="mae"):
+        """
+        »ìºÏËðÊ§£º²î·ÖÓò loss + »ý·ÖÓò loss
+        alpha: È¨ÖØ£¬Ô½´óÔ½Æ«ÖØ»ý·ÖÓò
+        """
+        def loss(y_true, y_pred):
+            # ²î·ÖÓò loss
+            if base_loss == "mae":
+                diff_loss = tf.reduce_mean(tf.abs(y_true - y_pred))
+            elif base_loss == "mse":
+                diff_loss = tf.reduce_mean(tf.square(y_true - y_pred))
+            else:
+                raise ValueError(f"Unsupported base_loss: {base_loss}")
+
+            # »ý·ÖÓò loss
+            x_true = tf.cumsum(y_true, axis=1)
+            x_pred = tf.cumsum(y_pred, axis=1)
+            if base_loss == "mae":
+                int_loss = tf.reduce_mean(tf.abs(x_true - x_pred), axis=1)
+            else:
+                int_loss = tf.reduce_mean(tf.square(x_true - x_pred), axis=1)
+            int_loss = tf.reduce_mean(int_loss)  # batch + feature Æ½¾ù
+
+            return alpha * int_loss + (1 - alpha) * diff_loss
+        return loss
+
+    # -------------------------
     # 工厂方法
     # -------------------------
     @classmethod
@@ -149,6 +206,8 @@ class LossFunctions:
             'quantile': cls.quantile_loss,
             'fft': cls.fft_loss,
             'phase': cls.phase_loss,
+            'integrated': cls.integrated_loss,
+            'mixed-integrated': cls.mixed_integrated_loss,
         }
 
         if loss_name not in loss_map:
@@ -157,7 +216,7 @@ class LossFunctions:
         loss_func = loss_map[loss_name]
 
         if callable(loss_func) and loss_name in [
-            'mae_freq', 'mse-corr', 'mae-corr', 'huber-corr', 'focal-mse', 'quantile'
+            'mae_freq', 'mse-corr', 'mae-corr', 'huber-corr', 'focal-mse', 'quantile', 'integrated', 'mixed-integrated'
         ]:
             return loss_func(**kwargs)
         else:
@@ -189,6 +248,8 @@ class LossFunctions:
                 'quantile': ['mae'],             # 常用回归误差度量
                 'fft': ['fft'],
                 'phase': ['phase'],
+                'integrated': ['mae', 'mse'],
+                'mixed-integrated': ['mae', 'mse'],
             }
 
             if loss_name not in loss_to_metrics:
@@ -214,7 +275,8 @@ class LossFunctions:
         """列出可用的损失函数"""
         return [
             'mae', 'mse', 'mae_freq', 'mse-corr', 'mae-corr',
-            'huber-corr', 'focal-mse', 'quantile', 'fft', 'phase'
+            'huber-corr', 'focal-mse', 'quantile', 'fft', 'phase',
+            'diff', 'mixed-diff'
         ]
 
     @staticmethod
