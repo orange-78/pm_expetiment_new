@@ -57,6 +57,7 @@ class TrainingConfig:
     metrics: str = "loss"
     alpha: float = 5e-4
     base_loss: str = "mse"
+    int_base: str = "mae"
 
 
 def get_scaler_class(scaler_type: str):
