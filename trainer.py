@@ -61,25 +61,28 @@ class Trainer:
             ModelCheckpoint(
                 filepath=checkpoint_path.replace('.keras', '-bestmetric.keras'),
                 monitor=monitor_metric,
+                mode="min",
                 save_best_only=True,
                 save_weights_only=False,
                 verbose=0
             ),
-            # 保存最后一个模型
+            # 保存最后一个模型 TODO mode
             ModelCheckpoint(
                 filepath=checkpoint_path.replace('.keras', '-last.keras'),
                 monitor=monitor_metric,
+                mode="min",
                 save_best_only=False,
                 save_weights_only=False,
                 verbose=0
             )
         ]
 
-        # 添加早停回调（当 early_stop > 0 时才启用）
+        # 添加早停回调（当 early_stop > 0 时才启用）TODO mode
         if getattr(self.config, "early_stop", 0) > 0:
             callbacks.append(
                 EarlyStopping(
                     monitor=monitor_metric,
+                    mode="min",
                     patience=self.config.early_stop,
                     restore_best_weights=True,
                     verbose=1
