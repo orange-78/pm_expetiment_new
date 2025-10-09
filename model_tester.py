@@ -54,11 +54,12 @@ class ModelEvaluator:
     """模型评估器"""
     
     @staticmethod
-    def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
+    def compute_metrics(y_true: np.ndarray, 
+                        y_pred: np.ndarray, 
+                        tolerance: Optional[float] = None) -> Dict[str, float]:
         """计算评估指标"""
         # 确保数据形状一致
         if y_true.shape != y_pred.shape:
-            # 尝试reshape到相同维度
             if y_true.size == y_pred.size:
                 y_true = y_true.reshape(-1)
                 y_pred = y_pred.reshape(-1)
@@ -72,12 +73,29 @@ class ModelEvaluator:
         mse = mean_squared_error(y_true_flat, y_pred_flat)
         mae = mean_absolute_error(y_true_flat, y_pred_flat)
         r2 = r2_score(y_true_flat, y_pred_flat)
-        
-        return {
+
+        # Pearson Correlation Coefficient
+        if np.std(y_true_flat) > 0 and np.std(y_pred_flat) > 0:
+            pcc = np.corrcoef(y_true_flat, y_pred_flat)[0, 1]
+        else:
+            pcc = np.nan  # 避免除零错误
+
+        # 容许范围内比例
+        tolerance_ratio = None
+        if tolerance is not None:
+            diffs = np.abs(y_true_flat - y_pred_flat)
+            tolerance_ratio = np.mean(diffs <= tolerance)
+
+        result = {
             'mse': mse,
             'mae': mae,
-            'r2': r2
+            'r2': r2,
+            'pcc': pcc
         }
+        if tolerance is not None:
+            result[f'within_tol'] = tolerance_ratio
+        
+        return result
     
     @staticmethod
     def evaluate_by_features(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, Dict[str, float]]:
@@ -92,7 +110,7 @@ class ModelEvaluator:
             for feat_idx in range(y_true.shape[-1]):
                 feat_true = y_true[..., feat_idx]
                 feat_pred = y_pred[..., feat_idx]
-                results[f'feature_{feat_idx}'] = ModelEvaluator.compute_metrics(feat_true, feat_pred)
+                results[f'feature_{feat_idx}'] = ModelEvaluator.compute_metrics(feat_true, feat_pred, 0.063)
         
         return results
     

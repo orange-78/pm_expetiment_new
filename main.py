@@ -18,8 +18,9 @@ from data_pipeline import DataPipeline
 from model_factory import ModelFactory
 from trainer import TrainingPipeline, Trainer
 from model_tester import ModelTester
+from data_handler import DataManager
 from visualizer import plot_pm
-from config import DATA_CONFIG, MODEL_CONFIG, TRAINING_CONFIG
+from config import DATA_CONFIG, MODEL_CONFIG, TRAINING_CONFIG, load_config
 
 
 class ExperimentRunner:
@@ -325,6 +326,69 @@ def test_main(model_path: str = None, data_index: int = -1):
     
     print("Main function completed.")
 
+def val_main(repo_path: str, model_name: str):
+    """评估主函数"""
+    if not Path(repo_path).exists():
+        raise ValueError(f"根目录不存在: {repo_path}")
+    
+    # 获取基础评估结果表
+    data_manager = DataManager(repo_path)
+
+    # 逐模型进行评估
+    config_path = f"{repo_path}/config.json"
+    data_cfg, model_cfg, training_cfg = load_config(config_path)
+    tester = ModelTester(data_cfg)
+
+    for model_info in data_manager.get_existing_model_paths_with_configs(model_name):
+        model_path, lookback, steps = model_info
+        print(f"\n 正在评估模型: {model_path}")
+
+        result = tester.load_and_test_model(model_path, [0, 0, 1], False)
+        metrics: dict = result['metrics']['test']
+
+        # 确认目标行
+        rows = data_manager.locate_row_by_keys("lookback", "steps", lookback, steps)
+        if not rows:
+            print(f" 未找到 lookback={lookback}, steps={steps} 的行，跳过。")
+            continue
+        row_idx = rows[0]
+
+        # 检查是否已经完整写过数据（即所有指标列都非空）
+        already_complete = True
+        for name, content in metrics.items():
+            for metric_name in content.keys():
+                col_name = f"{name}_{metric_name}"
+                if col_name not in data_manager.get_all_headers():
+                    already_complete = False
+                    break
+                val = data_manager.get_row_data(row_idx)[data_manager.header_map[col_name]-1]
+                if val is None:
+                    already_complete = False
+                    break
+            if not already_complete:
+                break
+        if already_complete:
+            print(f" 行 lookback={lookback}, steps={steps} 已存在完整指标，跳过。")
+            continue
+
+        # 写入指标
+        for name, content in metrics.items():
+            for metric_name, value in content.items():
+                col_name = f"{name}_{metric_name}"
+                # 如果列不存在 → 新增
+                if col_name not in data_manager.get_all_headers():
+                    data_manager.add_empty_column(col_name)
+                # 写值
+                data_manager.modify_cell_by_keys(
+                    "lookback", "steps", lookback, steps, 
+                    col_name, float(value), limit_one=True
+                )
+        print(f" 写入完成: lookback={lookback}, steps={steps}")
+
+    # 保存Excel
+    data_manager.save()
+    print(f"\n 已保存评估结果至 {data_manager.get_excel_path()}")
+
 
 def demo_different_scalers():
     """演示不同scaler的使用"""
@@ -401,6 +465,9 @@ if __name__ == "__main__":
     parser.add_argument('--interval', type=int, help='batch steps interval', default=100)
     parser.add_argument('--startstep', type=int, help='batch steps start', default=0)
     parser.add_argument('--endstep', type=int, help='batch steps end', default=0)
+    # 评估参数
+    parser.add_argument('--repopath', type=str, help='repo to evaluate', default='')
+    parser.add_argument('--modelname', type=str, help='model name to scan', default='')
     # 解析参数
     args = parser.parse_args()
     if args.action == "train":
@@ -414,8 +481,14 @@ if __name__ == "__main__":
                    end_at=args.endstep)
     elif args.action == "test":
         # 运行测试主程序
-            test_main(model_path=args.path,
+        test_main(model_path=args.path,
                       data_index=args.index)
+    elif args.action == "val":
+        # 运行模型评估程序
+        val_main(repo_path=args.repopath,
+                 model_name=args.modelname)
+
+
     
     # 或者运行scaler演示
     # demo_different_scalers()

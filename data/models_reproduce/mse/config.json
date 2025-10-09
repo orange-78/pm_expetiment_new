@@ -33,7 +33,7 @@
     "early_stop": 5,
     "monitor": "val_mean_squared_error",  // 'val_loss','val_mean_absolute_error','val_mean_squared_error','val_root_mean_squared_error'
     "loss": "mse-corr",  // 'mae','mse','mae_freq','mse-corr','mae-corr','huber-corr','focal-mse','quantile','fft','phase'
-    "corr_alpha": 1e-3,
+    "alpha": 1e-3,
     "metrics": "loss"
   }
 }
