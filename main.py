@@ -19,7 +19,7 @@ from model_factory import ModelFactory
 from trainer import TrainingPipeline, Trainer
 from model_tester import ModelTester
 from data_handler import DataManager
-from visualizer import plot_pm
+from visualizer import plot_grid_graph, plot_pm
 from config import DATA_CONFIG, MODEL_CONFIG, TRAINING_CONFIG, load_config
 
 
@@ -390,6 +390,20 @@ def val_main(repo_path: str, model_name: str):
     data_manager.save()
     print(f"\n 已保存评估结果至 {data_manager.get_excel_path()}")
 
+def plot_main(repo_path: str):
+    data = DataManager(repo_path)
+    plot_grid_graph(data.get_column_data('lookback'),
+                    data.get_column_data('steps'),
+                    data.get_column_data('overall_mae'),
+                    title='',
+                    metric_name='MAE',
+                    unit='mas',
+                    scale=1000.0,
+                    figsize=(16, 8),
+                    reverse_colorbar_num=True,
+                    reverse_colorbar_color=False,
+                    cmap='viridis',
+                    font_size=28)
 
 def demo_different_scalers():
     """演示不同scaler的使用"""
@@ -466,7 +480,7 @@ if __name__ == "__main__":
     parser.add_argument('--interval', type=int, help='batch steps interval', default=100)
     parser.add_argument('--startstep', type=int, help='batch steps start', default=0)
     parser.add_argument('--endstep', type=int, help='batch steps end', default=0)
-    # 评估参数
+    # 评估和绘制结果图参数
     parser.add_argument('--repopath', type=str, help='repo to evaluate', default='')
     parser.add_argument('--modelname', type=str, help='model name to scan', default='')
     # 解析参数
@@ -488,6 +502,8 @@ if __name__ == "__main__":
         # 运行模型评估程序
         val_main(repo_path=args.repopath,
                  model_name=args.modelname)
+    elif args.action == "plot":
+        plot_main(repo_path=args.repopath)
 
 
     

@@ -83,18 +83,3 @@ def plot_grid_graph(lookbacks, steps, metrics,
     plt.tight_layout()
     plt.show()
 
-
-if __name__ == "__main__":
-    plt.rcParams.update({'font.size': 28})
-    data = ExcelModifierWithHeaders(EXPERIMENT_MODEL_INDEX_PATH, SHEET_NAME)
-    plot_grid_graph(data.get_column_data('lookback'),
-                    data.get_column_data('steps'),
-                    data.get_column_data('mse'),
-                    title='',
-                    metric_name='MAE',
-                    unit='mas$^2$',
-                    scale=1000000.0,
-                    figsize=(24, 8),
-                    reverse_colorbar_num=True,
-                    reverse_colorbar_color=False,
-                    cmap='viridis')
