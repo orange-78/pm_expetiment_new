@@ -119,7 +119,8 @@ class ExperimentRunner:
                     print(f"Error in experiment {model_name}: {e}")
                     continue
                 
-                j += 1
+                finally:
+                    j += 1
         
         return results
     
