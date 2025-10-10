@@ -82,7 +82,6 @@ class Trainer:
             callbacks.append(
                 EarlyStopping(
                     monitor='val_loss',
-                    mode="min",
                     patience=self.config.early_stop,
                     restore_best_weights=True,
                     verbose=1
