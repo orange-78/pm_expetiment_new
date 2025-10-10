@@ -81,7 +81,7 @@ class Trainer:
         if getattr(self.config, "early_stop", 0) > 0:
             callbacks.append(
                 EarlyStopping(
-                    monitor=monitor_metric,
+                    monitor='val_loss',
                     mode="min",
                     patience=self.config.early_stop,
                     restore_best_weights=True,
