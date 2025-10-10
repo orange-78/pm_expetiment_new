@@ -327,13 +327,13 @@ def test_main(model_path: str = None, data_index: int = -1):
     
     print("Main function completed.")
 
-def val_main(repo_path: str, model_name: str):
+def val_main(repo_path: str, model_name: str, data_path: str):
     """评估主函数"""
     if not Path(repo_path).exists():
         raise ValueError(f"根目录不存在: {repo_path}")
     
     # 获取基础评估结果表
-    data_manager = DataManager(repo_path)
+    data_manager = DataManager(repo_path, excel_filename=data_path)
 
     # 逐模型进行评估
     config_path = f"{repo_path}/config.json"
@@ -390,8 +390,9 @@ def val_main(repo_path: str, model_name: str):
     data_manager.save()
     print(f"\n 已保存评估结果至 {data_manager.get_excel_path()}")
 
-def plot_main(repo_path: str):
-    data = DataManager(repo_path)
+def plot_main(repo_path: str, data_path: str):
+    """绘图主函数"""
+    data = DataManager(repo_path, excel_filename=data_path)
     plot_grid_graph(data.get_column_data('lookback'),
                     data.get_column_data('steps'),
                     data.get_column_data('overall_mae'),
@@ -483,6 +484,7 @@ if __name__ == "__main__":
     # 评估和绘制结果图参数
     parser.add_argument('--repopath', type=str, help='repo to evaluate', default='')
     parser.add_argument('--modelname', type=str, help='model name to scan', default='')
+    parser.add_argument('--dataname', type=str, help='xlsx file name', default='evaluation')
     # 解析参数
     args = parser.parse_args()
     if args.action == "train":
@@ -501,9 +503,11 @@ if __name__ == "__main__":
     elif args.action == "val":
         # 运行模型评估程序
         val_main(repo_path=args.repopath,
-                 model_name=args.modelname)
+                 model_name=args.modelname,
+                 data_path=args.dataname)
     elif args.action == "plot":
-        plot_main(repo_path=args.repopath)
+        plot_main(repo_path=args.repopath,
+                 data_path=args.dataname)
 
 
     

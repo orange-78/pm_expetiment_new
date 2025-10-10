@@ -14,7 +14,7 @@ class DataManager:
     整合了Excel操作功能
     """
     
-    def __init__(self, root_path: str, excel_filename: str = 'evaluation.xlsx', sheet_name: str = 'Sheet1'):
+    def __init__(self, root_path: str, excel_filename: str = 'evaluation', sheet_name: str = 'Sheet1'):
         """
         初始化数据管理器
         
@@ -23,6 +23,7 @@ class DataManager:
             excel_filename: Excel文件名，默认为 'evaluation.xlsx'
             sheet_name: 工作表名称，默认使用活动工作表
         """
+        excel_filename = excel_filename if excel_filename.endswith('.xlsx') else excel_filename + '.xlsx'
         self.root_path = Path(root_path)
         self.excel_path = self.root_path / excel_filename
         self.sheet_name = sheet_name
@@ -403,46 +404,3 @@ class DataManager:
         """
         return self.excel_path
 
-
-# 使用示例
-if __name__ == "__main__":
-    # 初始化数据管理器
-    dm = DataManager('root')
-    
-    # 查看所有配置（验证排序）
-    print("配置列表（已排序）:")
-    for lookback, steps, folder in dm.get_configs():
-        print(f"  lookback={lookback}, steps={steps}, folder={folder}")
-    
-    # 获取特定模型的所有路径
-    model_paths = dm.get_model_paths('model1')
-    print("\nModel1的所有路径:")
-    for path in model_paths:
-        print(f"  {path}")
-    
-    # 示例：批量添加列并填充数据
-    def generate_row_data(row_idx):
-        """为每一行生成数据的函数"""
-        row_data = dm.get_row_data(row_idx)
-        lookback = row_data[0]  # 假设lookback在第一列
-        steps = row_data[1]     # 假设steps在第二列
-        
-        return {
-            'accuracy': 0.95 + row_idx * 0.01,  # 示例数据
-            'loss': 0.05 - row_idx * 0.001,     # 示例数据
-            'score': lookback * steps / 1000    # 示例计算
-        }
-    
-    # 添加三列并填充数据
-    dm.add_columns_with_data(
-        [
-            {'header': 'accuracy'},
-            {'header': 'loss'},
-            {'header': 'score'}
-        ],
-        generate_row_data
-    )
-    
-    # 保存文件
-    dm.save()
-    print("\n已保存Excel文件")
