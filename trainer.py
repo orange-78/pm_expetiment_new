@@ -46,7 +46,7 @@ class Trainer:
         os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
 
         # 从配置中获取监控指标
-        monitor_metric = getattr(self.config, "monitor", "val_loss")
+        monitor_metric = getattr(self.config, "monitor")
 
         callbacks = [
             # 保存损失最佳模型
