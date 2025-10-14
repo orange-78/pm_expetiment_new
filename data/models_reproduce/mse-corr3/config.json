@@ -25,14 +25,14 @@
     "dropout2": 0.2
   },
   "training": {
-    "model_target_dir": "data/models_reproduce/mse2",
+    "model_target_dir": "data/models_reproduce/mse-corr3",
     "learning_rate": 4e-4,
     "batch_size": 256,
     "epochs": 50,
     "shuffle": true,
     "early_stop": 5,
     "monitor": "val_integrated_mae",  // 'val_loss','val_mean_absolute_error','val_mean_squared_error','val_root_mean_squared_error', 'val_integrated_mae', 'val_integrated_mse'
-    "loss": "mse",  // 'mae','mse','mae_freq','mse-corr','mae-corr','huber-corr','focal-mse','quantile','fft','phase', 'int', 'mixed-int'
+    "loss": "mse-corr",  // 'mae','mse','mae_freq','mse-corr','mae-corr','huber-corr','focal-mse','quantile','fft','phase', 'int', 'mixed-int'
     "metrics": "loss",
     "alpha": 1e-3,
     "base_loss": "mse",
