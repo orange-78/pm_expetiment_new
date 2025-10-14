@@ -68,7 +68,15 @@ def plot_grid_graph(lookbacks, steps, metrics,
                     reverse_colorbar_num=False,
                     reverse_colorbar_color=False,
                     cmap='viridis',
-                    font_size=28): 
+                    font_size=28,
+                    vrange=None): 
+    """
+    参数说明:
+    vrange: tuple or None
+        - None: 自动使用数据的最小值和最大值
+        - (vmin, vmax): 指定colorbar的范围
+          如果数据超出此范围,则自动扩展到数据实际范围
+    """
     
     # 调整字号
     plt.rcParams.update({'font.size': font_size})
@@ -84,7 +92,7 @@ def plot_grid_graph(lookbacks, steps, metrics,
     lookback_idx = {lb: i for i, lb in enumerate(unique_lookbacks)}
     steps_idx = {st: j for j, st in enumerate(unique_steps)}
 
-    # 初始化矩阵，用 nan 表示缺失
+    # 初始化矩阵,用 nan 表示缺失
     heatmap = np.full((len(unique_lookbacks), len(unique_steps)), np.nan)
 
     # 填充数据
@@ -92,19 +100,33 @@ def plot_grid_graph(lookbacks, steps, metrics,
         i, j = lookback_idx[lb], steps_idx[st]
         heatmap[i, j] = val
 
+    # 确定 colorbar 的范围
+    data_min = np.nanmin(heatmap)
+    data_max = np.nanmax(heatmap)
+    
+    if vrange is None:
+        # 不指定范围,使用数据范围
+        vmin, vmax = data_min, data_max
+    else:
+        # 指定了范围
+        vmin_param, vmax_param = vrange
+        # 如果数据超出参数范围,则以数据为准
+        vmin = min(vmin_param, data_min)
+        vmax = max(vmax_param, data_max)
+
     # 绘制图像
     fig, ax = plt.subplots(figsize=figsize)
 
-    # 如果传入的是字符串，转为 colormap 对象
+    # 如果传入的是字符串,转为 colormap 对象
     if isinstance(cmap, str):
         cmap = plt.get_cmap(cmap)
     cmap.set_bad(color='white')  # nan 填充为白色
 
-    # 逆转colorbar颜色，使大数对应暗色，小数对应亮色
+    # 逆转colorbar颜色,使大数对应暗色,小数对应亮色
     if reverse_colorbar_color:
         cmap = cmap.reversed()   # 反向颜色映射
 
-    im = ax.imshow(heatmap, cmap=cmap, origin='lower')
+    im = ax.imshow(heatmap, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
 
     # 设置坐标轴刻度为对应标签
     ax.set_xticks(range(len(unique_steps)))
@@ -112,7 +134,7 @@ def plot_grid_graph(lookbacks, steps, metrics,
     ax.set_yticks(range(len(unique_lookbacks)))
     ax.set_yticklabels(unique_lookbacks)
 
-    # 添加 colorbar，并让它和图像高度匹配
+    # 添加 colorbar,并让它和图像高度匹配
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.1)
     cbar = plt.colorbar(im, cax=cax)
@@ -122,7 +144,7 @@ def plot_grid_graph(lookbacks, steps, metrics,
     label = metric_name if not unit else f"{metric_name} ({unit})"
     cbar.set_label(label)
 
-    # 倒置 colorbar，使顶部为小值（better），底部为大值（worse）
+    # 倒置 colorbar,使顶部为小值(better),底部为大值(worse)
     if reverse_colorbar_num:
         cbar.ax.invert_yaxis()
 
@@ -137,4 +159,3 @@ def plot_grid_graph(lookbacks, steps, metrics,
 
     plt.tight_layout()
     plt.show()
-

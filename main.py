@@ -395,16 +395,17 @@ def plot_main(repo_path: str, data_path: str):
     data = DataManager(repo_path, excel_filename=data_path)
     plot_grid_graph(data.get_column_data('lookback'),
                     data.get_column_data('steps'),
-                    data.get_column_data('overall_mae'),
+                    data.get_column_data('overall_pcc'),
                     title='',
-                    metric_name='MAE',
-                    unit='mas',
-                    scale=1000.0,
+                    metric_name='Corrcoef',
+                    unit='',
+                    scale=1.0,
                     figsize=(16, 8),
-                    reverse_colorbar_num=True,
-                    reverse_colorbar_color=False,
+                    reverse_colorbar_num=False,
+                    reverse_colorbar_color=True,
                     cmap='viridis',
-                    font_size=28)
+                    font_size=28,
+                    vrange=(0.701, 0.999))
 
 def demo_different_scalers():
     """演示不同scaler的使用"""
@@ -510,6 +511,10 @@ if __name__ == "__main__":
                  data_path=args.dataname)
 
 
-    
-    # 或者运行scaler演示
-    # demo_different_scalers()
+"""
+最终文章用模型：
+mae
+mse2
+mse-corr3
+mse-int3
+"""
