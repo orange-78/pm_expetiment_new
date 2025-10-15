@@ -395,9 +395,9 @@ def plot_main(repo_path: str, data_path: str):
     data = DataManager(repo_path, excel_filename=data_path)
     plot_grid_graph(data.get_column_data('lookback'),
                     data.get_column_data('steps'),
-                    data.get_column_data('overall_pcc'),
+                    data.get_column_data('feature_1_within_tol'),
                     title='',
-                    metric_name='Corrcoef',
+                    metric_name='Within 10% Tolerance',
                     unit='',
                     scale=1.0,
                     figsize=(16, 8),
@@ -405,7 +405,7 @@ def plot_main(repo_path: str, data_path: str):
                     reverse_colorbar_color=True,
                     cmap='viridis',
                     font_size=28,
-                    vrange=(0.701, 0.999))
+                    vrange=(0.35, 1.0))
 
 def demo_different_scalers():
     """演示不同scaler的使用"""
@@ -513,7 +513,7 @@ if __name__ == "__main__":
 
 """
 最终文章用模型：
-mae
+mae2
 mse2
 mse-corr3
 mse-int3
