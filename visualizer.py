@@ -13,52 +13,97 @@ from data_handler import DataManager
 from tf_singleton import tf
 import numpy as np
 import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
 
 # 示例调用
 # (X_train, y_train), (X_val, y_val), (X_test, y_test), scalers, (train_raw, val_raw, test_raw) = prepare_datasets(...)
 # T_test, p_test = get_true_pred_sequences("best_model_weights.h5", X_test, y_test)
 
-def plot_pm(T_test, p_test, i):
+def plot_pm(
+    T_test,
+    p_test,
+    i=0,
+    start_date=None,
+    date_format="%Y-%m-%d",
+    labels=("True PM", "Pred PM"),
+):
     """
-    可视化第 i 条数据的 PMX 和 PMY 真值与预测值对比
-    
+    可视化第 i 条数据的 PMX 和 PMY 真值与预测值对比（支持左对齐与自定义图例）
+
     参数：
-        T_test: np.ndarray, shape (n, lookback+steps, 2) 真实序列
-        p_test: np.ndarray, shape (n, lookback+steps, 2) 预测序列
-        i: int, 要绘制的样本索引
+        T_test: np.ndarray, shape (n, L1, 2) 或 (L1, 2)，真实序列
+        p_test: np.ndarray, shape (n, L2, 2) 或 (L2, 2)，预测序列（可不等长）
+        i: int, 样本索引，仅当输入为 3D 时有效
+        start_date: 可选 datetime 或 str, 若提供则横坐标按日期计算
+        date_format: 日期格式（仅当 start_date 为 str 时使用）
+        labels: tuple(str, str)，图例前缀，例如 ('Observed', 'Forecasted')
     """
-    true_seq = T_test[i]
-    pred_seq = p_test[i]
-    
-    # 时间轴
-    timesteps = np.arange(true_seq.shape[0])
-    
-    # 提取 PMX 和 PMY
-    pmx_true, pmy_true = true_seq[:, 0], true_seq[:, 1]
-    pmx_pred, pmy_pred = pred_seq[:, 0], pred_seq[:, 1]
-    
-    # 绘图
-    fig, axes= plt.subplots(2, 1, figsize=(12, 6), sharex=True)
-    
+
+    # ==== 支持 2D 或 3D 输入 ====
+    if T_test.ndim == 3:
+        true_seq = T_test[i]
+    elif T_test.ndim == 2:
+        true_seq = T_test
+    else:
+        raise ValueError("T_test 必须是 shape (n, L, 2) 或 (L, 2)")
+
+    if p_test.ndim == 3:
+        pred_seq = p_test[i]
+    elif p_test.ndim == 2:
+        pred_seq = p_test
+    else:
+        raise ValueError("p_test 必须是 shape (n, L, 2) 或 (L, 2)")
+
+    len_true = true_seq.shape[0]
+    len_pred = pred_seq.shape[0]
+    max_len = max(len_true, len_pred)
+
+    # ==== 左对齐 ====
+    def left_align(arr, target_len):
+        """左对齐序列，用 NaN 填充右侧"""
+        pad_total = target_len - len(arr)
+        if pad_total <= 0:
+            return arr[:target_len]
+        return np.pad(arr, ((0, pad_total), (0, 0)), mode="constant", constant_values=np.nan)
+
+    true_seq_aligned = left_align(true_seq, max_len)
+    pred_seq_aligned = left_align(pred_seq, max_len)
+
+    pmx_true, pmy_true = true_seq_aligned[:, 0], true_seq_aligned[:, 1]
+    pmx_pred, pmy_pred = pred_seq_aligned[:, 0], pred_seq_aligned[:, 1]
+
+    # ==== 横坐标 ====
+    if start_date is not None:
+        if isinstance(start_date, str):
+            start_date = datetime.strptime(start_date, date_format)
+        time_axis = [start_date + timedelta(days=i) for i in range(max_len)]
+        x_label = "Date"
+    else:
+        time_axis = np.arange(max_len)
+        x_label = "Time step"
+
+    # ==== 绘图 ====
+    fig, axes = plt.subplots(2, 1, figsize=(12, 6), sharex=True)
+
     # PMX
-    axes[0].plot(timesteps, pmx_true, label="True PMX", color="blue")
-    axes[0].plot(timesteps, pmx_pred, label="Pred PMX", color="red", linestyle="--")
+    axes[0].plot(time_axis, pmx_true, label=f"{labels[0]} PMX", color="blue")
+    axes[0].plot(time_axis, pmx_pred, label=f"{labels[1]} PMX", color="red", linestyle="--")
     axes[0].set_ylabel("PMX")
     axes[0].legend()
     axes[0].grid(True, linestyle="--", alpha=0.5)
-    
+
     # PMY
-    axes[1].plot(timesteps, pmy_true, label="True PMY", color="blue")
-    axes[1].plot(timesteps, pmy_pred, label="Pred PMY", color="red", linestyle="--")
+    axes[1].plot(time_axis, pmy_true, label=f"{labels[0]} PMY", color="blue")
+    axes[1].plot(time_axis, pmy_pred, label=f"{labels[1]} PMY", color="red", linestyle="--")
     axes[1].set_ylabel("PMY")
-    axes[1].set_xlabel("Time step")
+    axes[1].set_xlabel(x_label)
     axes[1].legend()
     axes[1].grid(True, linestyle="--", alpha=0.5)
-    
+
     plt.tight_layout()
     plt.show()
 
-
+    
 def plot_grid_graph(lookbacks, steps, metrics,
                     title='Heatmap of MAE by lookback and steps',
                     metric_name='MAE',

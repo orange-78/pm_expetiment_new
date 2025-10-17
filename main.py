@@ -20,6 +20,8 @@ from trainer import TrainingPipeline, Trainer
 from model_tester import ModelTester
 from data_handler import DataManager
 from visualizer import plot_grid_graph, plot_pm
+from csv_data_manager import CSVDataManager
+from model_runner import ModelRunner
 from config import DATA_CONFIG, MODEL_CONFIG, TRAINING_CONFIG, load_config
 
 
@@ -406,64 +408,81 @@ def plot_main(repo_path: str, data_path: str):
                     cmap='viridis',
                     font_size=28,
                     vrange=(0.35, 1.0))
+    
+def predict_main(model_path: str, csv_path: str, 
+                 save_path: str = None):
+    """
+    主预测函数：加载模型、读取CSV最新序列、进行预测并写入结果。
 
-def demo_different_scalers():
-    """演示不同scaler的使用"""
+    Args:
+        model_path: 模型文件路径 (.keras / .h5)
+        csv_path: 要预测的CSV文件路径
+        train_csv_path: 可选，用于拟合Scaler的训练数据路径
+        save_path: 可选，预测结果保存路径（默认覆盖原CSV）
+    """
+
+    print("=" * 60)
+    print("🚀 开始执行 predict_main()")
+    print("=" * 60)
+
+    # === 1️⃣ 加载CSV数据 ===
+    csv_manager = CSVDataManager(csv_path)
+    csv_manager.print_summary()
+
+    # === 2️⃣ 创建模型运行器 ===
+    # ⚠️ 注意：DataConfig 必须与训练时保持一致！
+    data_config, _, _ = load_config("config_base.json")
+
+    runner = ModelRunner(model_path, data_config)
+
+    # === 3️⃣ 获取最新lookback序列 ===
+    lookback = runner.lookback
+    steps = runner.steps
+
+    print(f"读取最新 {lookback} 条记录作为输入序列...")
+    input_seq = csv_manager.read_latest_sequence(
+        length=lookback
+    )
+    print(f"输入数据形状: {input_seq.shape}")
+
+    # === 4️⃣ 拟合Scaler ===
+    runner.fit_scaler_from_data()
+
+    # === 5️⃣ 模型预测 ===
+    print(f"正在使用模型预测未来 {steps} 步...")
+    predictions = runner.predict(input_seq)
+    print(f"✅ 预测完成: 结果形状 = {predictions.shape}")
+
+    # === 6️⃣ 写入预测结果 ===
+    print("正在将预测结果写入CSV...")
+    csv_manager.append_predictions_from_last(predictions, save_path=save_path)
+    print("✅ CSV写入完成")
+
+    print("=" * 60)
+    print("🎯 预测流程已结束")
+    print("=" * 60)
+
+def draw_main(csv_path: str):
+    """预测数据绘制函数"""
+    # ===加载CSV数据 ===
+    csv_manager = CSVDataManager(csv_path)
+    csv_manager.print_summary()
+
+    history_data = csv_manager.read_predictions_by_date_range('x_pole', 'y_pole',
+                                                              '2022-12-21', '2025-9-15')
+
+    bullitenA_data = csv_manager.read_predictions_by_date_range('a_x_pole_predict','a_y_pole_predict',
+                                                                '2025-9-16', '2026-9-11')
     
-    base_config = {
-        'dataset_path': "eopc04_14_IAU2000.62-now.csv",
-        'train_ratio': 0.75,
-        'val_ratio': 0.15,
-        'residual_type': 'both'
-    }
+    our_data = csv_manager.read_predictions_by_date_range('x_pole_predict','y_pole_predict',
+                                                                '2025-9-16', '2028-3-3')
     
-    # 测试不同的scaler配置
-    scaler_configs = [
-        # MinMax scaler
-        {'use_scaler': True, 'scaler_type': 'minmax', 'scaler_after_residual': False,
-         'scaler_params': {'feature_range': (0, 1)}},
-        
-        # Standard scaler
-        {'use_scaler': True, 'scaler_type': 'standard', 'scaler_after_residual': False,
-         'scaler_params': {}},
-        
-        # Robust scaler
-        {'use_scaler': True, 'scaler_type': 'robust', 'scaler_after_residual': False,
-         'scaler_params': {}},
-        
-        # Scaler after residual
-        {'use_scaler': True, 'scaler_type': 'minmax', 'scaler_after_residual': True,
-         'scaler_params': {'feature_range': (-1, 1)}},
-        
-        # No scaler
-        {'use_scaler': False, 'scaler_type': 'none', 'scaler_after_residual': False,
-         'scaler_params': {}}
-    ]
-    
-    for i, scaler_config in enumerate(scaler_configs):
-        print(f"\n{'='*50}")
-        print(f"Testing scaler configuration {i+1}")
-        print(f"Config: {scaler_config}")
-        print(f"{'='*50}")
-        
-        # 创建数据配置
-        data_config = DataConfig(**{**base_config, **scaler_config})
-        
-        # 创建实验运行器
-        runner = ExperimentRunner(data_config=data_config)
-        
-        # 运行小规模实验
-        try:
-            model, history, data_info = runner.single_experiment(
-                lookback=100,
-                steps=30,
-                model_name=f"scaler_test_{i+1}",
-                model_type='simple_lstm'  # 使用简单模型进行快速测试
-            )
-            print(f"Scaler config {i+1} completed successfully!")
-            
-        except Exception as e:
-            print(f"Error with scaler config {i+1}: {e}")
+    # plot_pm(bullitenA_data, our_data, start_date='2025-9-16')
+    plot_pm(np.concatenate([history_data, bullitenA_data], axis=0),
+            np.concatenate([history_data, our_data], axis=0),
+            start_date='2022-12-21')
+
+    pass
 
 
 if __name__ == "__main__":
@@ -486,6 +505,9 @@ if __name__ == "__main__":
     parser.add_argument('--repopath', type=str, help='repo to evaluate', default='')
     parser.add_argument('--modelname', type=str, help='model name to scan', default='')
     parser.add_argument('--dataname', type=str, help='xlsx file name', default='evaluation')
+    # 预测参数
+    parser.add_argument('--modelpath', type=str, help='prediction model path', default='')
+    parser.add_argument('--csvpath', type=str, help='csv data path', default='')
     # 解析参数
     args = parser.parse_args()
     if args.action == "train":
@@ -509,6 +531,11 @@ if __name__ == "__main__":
     elif args.action == "plot":
         plot_main(repo_path=args.repopath,
                  data_path=args.dataname)
+    elif args.action == "predict":
+        predict_main(model_path=args.modelpath,
+                     csv_path=args.csvpath)
+    elif args.action == "draw":
+        draw_main(csv_path=args.csvpath)
 
 
 """
