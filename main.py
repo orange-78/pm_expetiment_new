@@ -283,7 +283,8 @@ def train_main(lookback: List[int],
             start_at=start_at,
             end_at=[lookback[i] - end_at for i in range(len(lookback))] if end_at <= 0
             else [end_at for i in range(len(lookback))],
-            model_name_prefix=model_name
+            model_name_prefix=model_name,
+            model_type=MODEL_CONFIG.model_type
         )
     else:
         # 单个实验
@@ -293,7 +294,8 @@ def train_main(lookback: List[int],
             model, history, data_info = runner_default.single_experiment(
                 lookback=lookback[0],
                 steps=steps,
-                model_name=model_name
+                model_name=model_name,
+                model_type=MODEL_CONFIG.model_type
             )
     
     print("Main function completed.")
