@@ -3,7 +3,9 @@
 """
 # testgit
 
+from pathlib import Path
 import json5 as json
+import os
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
@@ -41,6 +43,7 @@ class ModelConfig:
     dropout0: float = 0.3
     dropout1: float = 0.3
     dropout2: float = 0.2
+    model_type: str = "lstm_attention"
 
 
 @dataclass
@@ -105,7 +108,13 @@ def parse_scaler_params(params: Optional[Dict[str, Any]]) -> Optional[Dict[str, 
 
 # 默认从 config.json 加载
 try:
-    DATA_CONFIG, MODEL_CONFIG, TRAINING_CONFIG = load_config("config.json")
+    _, _, training_c = load_config("config.json")
+    if os.path.exists(Path(training_c.model_target_dir) / "config.json"):
+        DATA_CONFIG, MODEL_CONFIG, TRAINING_CONFIG = load_config(Path(training_c.model_target_dir) / "config.json")
+        print(f'✅ 使用 {Path(training_c.model_target_dir) / "config.json"}的配置')
+    else:
+        DATA_CONFIG, MODEL_CONFIG, TRAINING_CONFIG = load_config("config.json")
+        print("使用 config.json 配置")
 except FileNotFoundError:
     print("⚠️ 未找到 config.json，使用默认配置")
     DATA_CONFIG, MODEL_CONFIG, TRAINING_CONFIG = DataConfig(), ModelConfig(), TrainingConfig()

@@ -22,7 +22,8 @@
     "attndim": 64,
     "dropout0": 0.3,
     "dropout1": 0.3,
-    "dropout2": 0.2
+    "dropout2": 0.2,
+    "model_type": "lstm_attention"  // 'lstm_attention', 'simple_lstm'
   },
   "training": {
     "model_target_dir": "data/models_reproduce/mae2",
