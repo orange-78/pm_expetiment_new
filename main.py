@@ -19,7 +19,7 @@ from model_factory import ModelFactory
 from trainer import TrainingPipeline, Trainer
 from model_tester import ModelTester
 from data_handler import DataManager
-from visualizer import plot_grid_graph, plot_pm
+from visualizer import plot_grid_graph, plot_pm, plot_pm_with_history
 from csv_data_manager import CSVDataManager
 from model_runner import ModelRunner
 from config import DATA_CONFIG, MODEL_CONFIG, TRAINING_CONFIG, load_config
@@ -439,8 +439,13 @@ def predict_main(model_path: str, csv_path: str,
     lookback = runner.lookback
     steps = runner.steps
 
-    print(f"读取最新 {lookback} 条记录作为输入序列...")
-    input_seq = csv_manager.read_latest_sequence(
+    START_MJD = 51544
+    print(f"读取（不一定）最新 {lookback} 条记录作为输入序列...")
+    # input_seq = csv_manager.read_latest_sequence(
+    #     length=lookback
+    # )
+    input_seq = csv_manager.read_sequence_by_mjd(
+        start_mjd=START_MJD - 1200,
         length=lookback
     )
     print(f"输入数据形状: {input_seq.shape}")
@@ -455,7 +460,9 @@ def predict_main(model_path: str, csv_path: str,
 
     # === 6️⃣ 写入预测结果 ===
     print("正在将预测结果写入CSV...")
-    csv_manager.append_predictions_from_last(predictions, save_path=save_path)
+    # csv_manager.append_predictions_from_last(predictions, save_path=save_path)
+    csv_manager.write_predictions(predictions=predictions, 
+                                  start_date=START_MJD)
     print("✅ CSV写入完成")
 
     print("=" * 60)
@@ -468,19 +475,36 @@ def draw_main(csv_path: str):
     csv_manager = CSVDataManager(csv_path)
     csv_manager.print_summary()
 
+    # history_data = csv_manager.read_predictions_by_date_range('x_pole', 'y_pole',
+    #                                                           '2023-7-9', '2025-9-15')
     history_data = csv_manager.read_predictions_by_date_range('x_pole', 'y_pole',
-                                                              '2022-12-21', '2025-9-15')
+                                                              '1997-1-1', '1999-12-31')
 
-    bullitenA_data = csv_manager.read_predictions_by_date_range('a_x_pole_predict','a_y_pole_predict',
-                                                                '2025-9-16', '2026-9-11')
+    # bullitenA_data = csv_manager.read_predictions_by_date_range('a_x_pole_predict','a_y_pole_predict',
+    #                                                             '2025-9-16', '2026-9-11')
+    bullitenA_data = csv_manager.read_predictions_by_date_range('x_pole','y_pole',
+                                                                '2000-1-1', '2003-1-4')
     
+    # our_data = csv_manager.read_predictions_by_date_range('x_pole_predict','y_pole_predict',
+    #                                                             '2025-9-16', '2027-5-8')
     our_data = csv_manager.read_predictions_by_date_range('x_pole_predict','y_pole_predict',
-                                                                '2025-9-16', '2028-3-3')
+                                                                '2000-1-1', '2003-1-4')
     
     # plot_pm(bullitenA_data, our_data, start_date='2025-9-16')
-    plot_pm(np.concatenate([history_data, bullitenA_data], axis=0),
-            np.concatenate([history_data, our_data], axis=0),
-            start_date='2022-12-21')
+    # plot_pm_with_history(history_data, bullitenA_data, our_data,
+    #                      '2025-9-16',
+    #                      legend_labels=('history', 'BulletinA', 'Our Model'))
+    fig = plot_pm_with_history(history_data, bullitenA_data, our_data,
+                         '2000-1-1',
+                         legend_labels=('history', 'true data', 'Our Model'))
+    
+    
+    # === 自动创建目录并保存 ===
+    save_path: str = "figures/compare.png"
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    fig.savefig(save_path, dpi=300)
+
+    # 返回 Figure 以便外部继续操作（如 plt.show 或再保存）
 
     pass
 

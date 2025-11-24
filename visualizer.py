@@ -1,6 +1,7 @@
 """
 绘制图像 visualizer.py
 """
+import os
 import sys
 from pathlib import Path
 # 将项目根目录添加到 Python 路径
@@ -103,6 +104,71 @@ def plot_pm(
     plt.tight_layout()
     plt.show()
 
+def plot_pm_with_history(
+    history: np.ndarray,
+    predict1: np.ndarray,
+    predict2: np.ndarray,
+    date: datetime,
+    legend_labels: tuple[str, str, str]=('history', 'predict1', 'predict2'),
+    date_format: str = "%Y-%m-%d"
+):
+    """
+    绘制历史与两个预测序列的比较图，返回 Figure 实例，可用于保存。
+    """
+
+    # === 参数校验 ===
+    if history.ndim != 2 or predict1.ndim != 2 or predict2.ndim != 2:
+        raise ValueError("history, predict1, predict2 均需为 shape (L, 2) 的二维数组。")
+
+    if isinstance(date, str):
+        date = datetime.strptime(date, date_format)
+
+    if len(legend_labels) != 3:
+        raise ValueError("legend_labels 必须是包含三个字符串的三元组。")
+
+    len_hist = history.shape[0]
+    len_pred1 = predict1.shape[0]
+    len_pred2 = predict2.shape[0]
+
+    # === 构造时间轴 ===
+    dates_hist = [date - timedelta(days=(len_hist - i)) for i in range(len_hist)]
+    dates_pred1 = [date + timedelta(days=i) for i in range(len_pred1)]
+    dates_pred2 = [date + timedelta(days=i) for i in range(len_pred2)]
+
+    # === 提取各列 ===
+    pmx_hist, pmy_hist = history[:, 0], history[:, 1]
+    pmx_pred1, pmy_pred1 = predict1[:, 0], predict1[:, 1]
+    pmx_pred2, pmy_pred2 = predict2[:, 0], predict2[:, 1]
+
+    # === 合并时间范围 ===
+    all_dates = np.array(dates_hist + dates_pred1 + dates_pred2)
+    min_date, max_date = min(all_dates), max(all_dates)
+
+    # === 创建 Figure ===
+    fig, axes = plt.subplots(2, 1, figsize=(12, 6), sharex=True, constrained_layout=True)
+
+    # PMX
+    axes[0].plot(dates_hist, pmx_hist, color="black", label=legend_labels[0])
+    axes[0].plot(dates_pred1, pmx_pred1, color="blue", label=legend_labels[1])
+    axes[0].plot(dates_pred2, pmx_pred2, color="red", linestyle="--", label=legend_labels[2])
+    axes[0].axvline(date, color="black", linestyle="--", linewidth=1)
+    axes[0].set_ylabel("PMX (as)")
+    axes[0].legend()
+    axes[0].grid(True, linestyle="--", alpha=0.5)
+
+    # PMY
+    axes[1].plot(dates_hist, pmy_hist, color="black", label=legend_labels[0])
+    axes[1].plot(dates_pred1, pmy_pred1, color="blue", label=legend_labels[1])
+    axes[1].plot(dates_pred2, pmy_pred2, color="red", linestyle="--", label=legend_labels[2])
+    axes[1].axvline(date, color="black", linestyle="--", linewidth=1)
+    axes[1].set_ylabel("PMY (as)")
+    axes[1].set_xlabel("Date")
+    axes[1].legend()
+    axes[1].grid(True, linestyle="--", alpha=0.5)
+
+    plt.xlim(min_date, max_date)
+
+    return fig
     
 def plot_grid_graph(lookbacks, steps, metrics,
                     title='Heatmap of MAE by lookback and steps',
