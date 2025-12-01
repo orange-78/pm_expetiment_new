@@ -2,12 +2,15 @@
 重构后的主程序 - main_refactored.py
 """
 
+import json
+import pickle
 import sys
 import argparse
 from pathlib import Path
 from typing import List, Optional
 import os
 
+from matplotlib import pyplot as plt
 import numpy as np
 
 # 将项目根目录添加到 Python 路径
@@ -23,6 +26,7 @@ from visualizer import plot_grid_graph, plot_pm, plot_pm_with_history
 from csv_data_manager import CSVDataManager
 from model_runner import ModelRunner
 from config import DATA_CONFIG, MODEL_CONFIG, TRAINING_CONFIG, load_config
+from error_visualization import calculate_mae_by_step, calculate_mae_of_dataset, plot_mae_by_step
 
 
 class ExperimentRunner:
@@ -399,9 +403,9 @@ def plot_main(repo_path: str, data_path: str):
     data = DataManager(repo_path, excel_filename=data_path)
     plot_grid_graph(data.get_column_data('lookback'),
                     data.get_column_data('steps'),
-                    data.get_column_data('feature_1_within_tol'),
+                    data.get_column_data('overall_pcc'),
                     title='',
-                    metric_name='Within 10% Tolerance',
+                    metric_name='Corrcoef',
                     unit='',
                     scale=1.0,
                     figsize=(16, 8),
@@ -409,7 +413,7 @@ def plot_main(repo_path: str, data_path: str):
                     reverse_colorbar_color=True,
                     cmap='viridis',
                     font_size=28,
-                    vrange=(0.35, 1.0))
+                    vrange=(0.701, 0.999))
     
 def predict_main(model_path: str, csv_path: str, 
                  save_path: str = None):
@@ -510,15 +514,269 @@ def draw_main(csv_path: str):
 
     pass
 
+def cal_draw_mae(model_paths: str = None, 
+                 labels: List[str] = None,
+                 config_path: str = None,
+                 save_fig: bool = True,
+                 mode: str = 'run',
+                 data_path: str = None):
+    """
+    计算并绘制 MAE(平均绝对误差)
+    
+    :param model_paths: 模型路径列表,默认为 None(将弹出选择界面)
+    :param labels: 标签列表
+    :param config_path: 配置文件路径,默认为None
+    :param save_fig: 是否保存图像,默认为 True
+    :param mode: 运行模式, 'run' = 运行模型并保存数据, 'load' = 读取已有数据
+    :param data_path: 数据文件路径,默认为 'data/mae_results.json' (支持 .json 或 .pkl)
+    """
+    
+    print("=" * 60)
+    print("🚀 开始执行 cal_draw_mae()")
+    print("=" * 60)
+    
+    # 设置默认数据路径
+    if data_path is None:
+        data_path = 'data/mae_results.json'
+    
+    # 判断文件格式
+    is_json = data_path.endswith('.json')
+    is_pickle = data_path.endswith('.pkl') or data_path.endswith('.pickle')
+    
+    # === 模式选择 ===
+    if mode == 'load':
+        # 读取模式
+        print(f"📂 读取模式: 从 {data_path} 加载数据...")
+        
+        if not os.path.exists(data_path):
+            print(f"❌ 错误: 数据文件不存在: {data_path}")
+            return
+        
+        try:
+            if is_json:
+                # JSON 格式
+                with open(data_path, 'r', encoding='utf-8') as f:
+                    saved_data = json.load(f)
+                
+                # 将列表转换回 numpy 数组
+                maes_dict = {
+                    label: np.array(values) 
+                    for label, values in saved_data['maes_dict'].items()
+                }
+                labels = saved_data['labels']
+                
+            elif is_pickle:
+                # Pickle 格式
+                with open(data_path, 'rb') as f:
+                    saved_data = pickle.load(f)
+                
+                maes_dict = saved_data['maes_dict']
+                labels = saved_data['labels']
+            
+            else:
+                print(f"❌ 错误: 不支持的文件格式,请使用 .json 或 .pkl")
+                return
+            
+            print(f"✅ 成功加载数据")
+            print(f"   模型数量: {len(maes_dict)}")
+            print(f"   标签: {labels}")
+            
+        except Exception as e:
+            print(f"❌ 加载数据失败: {e}")
+            return
+    
+    elif mode == 'run':
+        # 运行模式
+        print("🏃 运行模式: 执行模型推理...")
+        
+        # === 1️⃣ 选择或指定模型路径 ===
+        if config_path:
+            data_cfg, model_cfg, training_cfg = load_config(config_path)
+            runner_default = ExperimentRunner(data_config=data_cfg, model_config=model_cfg, training_config=training_cfg)
+        else:
+            runner_default = ExperimentRunner()
+        
+        if not model_paths:
+            # 交互式选择单个模型
+            model_path = select_model_file(
+                runner_default.data_config.model_target_dir, 
+                max_depth=7
+            )
+            if not model_path:
+                print("❌ 未选择模型")
+                return
+            model_paths = [model_path]
+        
+        # 验证所有模型路径
+        valid_model_paths = []
+        for path in model_paths:
+            if os.path.exists(path):
+                valid_model_paths.append(path)
+            else:
+                print(f"⚠️  警告: 模型路径不存在,已跳过: {path}")
+        
+        if not valid_model_paths:
+            print("❌ 没有有效的模型路径")
+            return
+        
+        print(f"📁 将处理 {len(valid_model_paths)} 个模型")
+        
+        # === 2️⃣ 处理标签列表 ===
+        if labels is None:
+            # 使用模型文件名作为标签
+            labels = [os.path.basename(path).replace('.keras', '').replace('.h5', '') 
+                      for path in valid_model_paths]
+        elif len(labels) != len(valid_model_paths):
+            print(f"⚠️  警告: 标签数量({len(labels)})与模型数量({len(valid_model_paths)})不匹配,使用默认标签")
+            labels = [os.path.basename(path).replace('.keras', '').replace('.h5', '') 
+                      for path in valid_model_paths]
+        
+        # === 3️⃣ 对每个模型进行推理和MAE计算 ===
+        maes_dict = {}
+        
+        for idx, (model_path, label) in enumerate(zip(valid_model_paths, labels)):
+            print(f"\n{'='*60}")
+            print(f"📊 处理模型 [{idx+1}/{len(valid_model_paths)}]: {label}")
+            print(f"   路径: {model_path}")
+            print(f"{'='*60}")
+            
+            # 测试模型并获取预测结果
+            print("🔄 正在进行模型推理...")
+            test_results = runner_default.test_model(
+                model_path=model_path,
+                do_predict=[0, 0, 1],  # 仅预测测试集
+                print_summary=True
+            )
+            
+            # 提取实际值和预测值
+            actual = test_results['ground_truth']['test']  # 形状: (batchsize, steps, 2)
+            predicted = test_results['predictions']['test']  # 形状: (batchsize, steps, 2)
+            
+            print(f"✅ 推理完成")
+            print(f"   实际值形状: {actual.shape}")
+            print(f"   预测值形状: {predicted.shape}")
+            
+            # 计算MAE
+            print("📊 计算每步MAE...")
+            mae_by_step = calculate_mae_by_step(actual, predicted)
+            dataset_mae = calculate_mae_of_dataset(mae_by_step)
+            
+            # 保存到字典
+            maes_dict[label] = dataset_mae
+            
+            # 打印详细的MAE统计信息
+            print(f"\n📈 MAE统计信息 ({label}):")
+            print(f"   PMX - 最小MAE: {dataset_mae[:, 0].min():.4f} mas")
+            print(f"   PMX - 最大MAE: {dataset_mae[:, 0].max():.4f} mas")
+            print(f"   PMX - 平均MAE: {dataset_mae[:, 0].mean():.4f} mas")
+            print(f"   PMY - 最小MAE: {dataset_mae[:, 1].min():.4f} mas")
+            print(f"   PMY - 最大MAE: {dataset_mae[:, 1].max():.4f} mas")
+            print(f"   PMY - 平均MAE: {dataset_mae[:, 1].mean():.4f} mas")
+        
+        # === 保存计算结果 ===
+        print("\n" + "=" * 60)
+        print(f"💾 保存MAE数据到: {data_path}")
+        
+        # 确保目录存在
+        os.makedirs(os.path.dirname(data_path), exist_ok=True)
+        
+        try:
+            if is_json:
+                # JSON 格式 - 需要将 numpy 数组转为列表
+                saved_data = {
+                    'maes_dict': {
+                        label: mae_values.tolist() 
+                        for label, mae_values in maes_dict.items()
+                    },
+                    'labels': labels,
+                    'model_paths': valid_model_paths
+                }
+                
+                with open(data_path, 'w', encoding='utf-8') as f:
+                    json.dump(saved_data, f, indent=2, ensure_ascii=False)
+                
+                print(f"✅ 数据已保存为 JSON 格式")
+                
+            elif is_pickle:
+                # Pickle 格式 - 可以直接保存 numpy 数组
+                saved_data = {
+                    'maes_dict': maes_dict,
+                    'labels': labels,
+                    'model_paths': valid_model_paths
+                }
+                
+                with open(data_path, 'wb') as f:
+                    pickle.dump(saved_data, f)
+                
+                print(f"✅ 数据已保存为 Pickle 格式")
+            
+            else:
+                print(f"⚠️  警告: 不支持的文件格式,使用默认 JSON 格式保存")
+                data_path = data_path.rsplit('.', 1)[0] + '.json'
+                
+                saved_data = {
+                    'maes_dict': {
+                        label: mae_values.tolist() 
+                        for label, mae_values in maes_dict.items()
+                    },
+                    'labels': labels,
+                    'model_paths': valid_model_paths
+                }
+                
+                with open(data_path, 'w', encoding='utf-8') as f:
+                    json.dump(saved_data, f, indent=2, ensure_ascii=False)
+                
+                print(f"✅ 数据已保存为 JSON 格式至: {data_path}")
+            
+        except Exception as e:
+            print(f"⚠️  警告: 保存数据失败: {e}")
+    
+    else:
+        print(f"❌ 错误: 无效的模式 '{mode}', 请使用 'run' 或 'load'")
+        return
+    
+    # === 4️⃣ 统一绘制所有模型的MAE曲线 ===
+    print("\n" + "=" * 60)
+    print("🎨 绘制所有模型的MAE对比曲线...")
+    print("=" * 60)
+    
+    plot_mae_by_step(
+        maes_dict,
+        strlist=labels,  # 按照输入顺序显示图例
+        shape=(7, 5)
+    )
+    
+    # === 5️⃣ 保存图像(可选)===
+    if save_fig:
+        # 生成包含所有模型名称的文件名
+        if len(labels) == 1:
+            save_name = f"mae_{labels[0]}"
+        else:
+            save_name = f"mae_comparison_{len(labels)}models"
+        
+        save_path = f"figures/{save_name}.png"
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"💾 图像已保存至: {save_path}")
+    
+    print("\n" + "=" * 60)
+    print("🎯 MAE计算和绘制流程已完成")
+    print(f"   共处理 {len(maes_dict)} 个模型")
+    print("=" * 60)
+    
+    return maes_dict  # 返回结果供进一步使用
 
+# 在 __main__ 中添加调用
 if __name__ == "__main__":
     # 创建解析器
     parser = argparse.ArgumentParser(description='模型训练/测试脚本')
     # 添加参数
-    parser.add_argument('action', help='train or test')
-    # 测试参数
-    parser.add_argument('--path', type=str, help='test model path', default=None)
+    parser.add_argument('action', help='train or test or val or plot or predict or draw or mae')
+    
+    # 测试参数 - 修改为接收多个值
+    parser.add_argument('--path', type=str, nargs='+', help='test model path(s)', default=None)
     parser.add_argument('--index', type=int, help='test data index', default=-1)
+    
     # 训练参数
     parser.add_argument('--lookback', type=int, nargs='+', help='train lookback (int or list of int)', default=[200])
     parser.add_argument('--steps', type=int, help='train steps', default=100)
@@ -527,15 +785,28 @@ if __name__ == "__main__":
     parser.add_argument('--interval', type=int, help='batch steps interval', default=100)
     parser.add_argument('--startstep', type=int, help='batch steps start', default=0)
     parser.add_argument('--endstep', type=int, help='batch steps end', default=0)
+    
     # 评估和绘制结果图参数
     parser.add_argument('--repopath', type=str, help='repo to evaluate', default='')
     parser.add_argument('--modelname', type=str, help='model name to scan', default='')
     parser.add_argument('--dataname', type=str, help='xlsx file name', default='evaluation')
+    
     # 预测参数
     parser.add_argument('--modelpath', type=str, help='prediction model path', default='')
     parser.add_argument('--csvpath', type=str, help='csv data path', default='')
+    
+    # MAE绘制参数 - 修改标签参数为接收多个值
+    parser.add_argument('--savefig', action='store_true', help='save mae figure', default=False)
+    parser.add_argument('--labels', type=str, nargs='+', help='labels for each model in the plot', default=None)
+    parser.add_argument('--maemode', type=str,  help='save to or load from data path, "load" or "run"', default='run')
+    parser.add_argument('--maedatapath', type=str,  help='mae save load data path, "load" or "run"', default='data/predicts/mae_figure_data.json')
+    
+    # 配置参数
+    parser.add_argument('--cfgpath', type=str, help='config relative full name', default=None)
+    
     # 解析参数
     args = parser.parse_args()
+    
     if args.action == "train":
         # 运行训练主程序
         train_main(lookback=args.lookback,
@@ -548,7 +819,7 @@ if __name__ == "__main__":
     elif args.action == "test":
         # 运行测试主程序
         test_main(model_path=args.path,
-                      data_index=args.index)
+                  data_index=args.index)
     elif args.action == "val":
         # 运行模型评估程序
         val_main(repo_path=args.repopath,
@@ -556,13 +827,20 @@ if __name__ == "__main__":
                  data_path=args.dataname)
     elif args.action == "plot":
         plot_main(repo_path=args.repopath,
-                 data_path=args.dataname)
+                  data_path=args.dataname)
     elif args.action == "predict":
         predict_main(model_path=args.modelpath,
                      csv_path=args.csvpath)
     elif args.action == "draw":
         draw_main(csv_path=args.csvpath)
-
+    elif args.action == "mae":
+        # 运行MAE计算和绘制程序
+        cal_draw_mae(model_paths=args.path,
+                     labels=args.labels,
+                     config_path=args.cfgpath,
+                     save_fig=args.savefig,
+                     mode=args.maemode,
+                     data_path=args.maedatapath)
 
 """
 最终文章用模型：
