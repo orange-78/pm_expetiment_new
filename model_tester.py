@@ -3,7 +3,7 @@
 """
 
 import numpy as np
-from typing import Tuple, Optional, List, Dict, Any
+from typing import Tuple, Optional, List, Dict, Any, Union
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 from tf_singleton import tf
@@ -120,12 +120,30 @@ class ModelEvaluator:
         return results
     
     @staticmethod
-    def print_metrics(metrics_dict: Dict[str, Dict[str, float]]):
-        """打印评估指标"""
-        for category, metrics in metrics_dict.items():
-            print(f"\n{category.upper()}:")
-            for metric_name, value in metrics.items():
-                print(f"  {metric_name.upper()}: {value:.6f}")
+    def print_metrics(metrics_dict: Union[Dict[str, float], Dict[str, Dict[str, float]]]):
+        """打印评估指标
+        
+        Args:
+            metrics_dict: 可以是单层字典(来自compute_metrics)或嵌套字典(来自evaluate_by_features)
+        """
+        # 检查是否为单层字典(所有值都是数字)
+        if metrics_dict and all(isinstance(v, (int, float, np.number)) for v in metrics_dict.values()):
+            # 单层字典,直接打印
+            print("\nMETRICS:")
+            for metric_name, value in metrics_dict.items():
+                if isinstance(value, (int, float, np.number)) and not np.isnan(value):
+                    print(f"  {metric_name.upper()}: {value:.6f}")
+                else:
+                    print(f"  {metric_name.upper()}: {value}")
+        else:
+            # 嵌套字典,按类别打印
+            for category, metrics in metrics_dict.items():
+                print(f"\n{category.upper()}:")
+                for metric_name, value in metrics.items():
+                    if isinstance(value, (int, float, np.number)) and not np.isnan(value):
+                        print(f"  {metric_name.upper()}: {value:.6f}")
+                    else:
+                        print(f"  {metric_name.upper()}: {value}")
 
 
 class ModelTester:

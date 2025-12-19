@@ -519,7 +519,8 @@ def cal_draw_mae(model_paths: str = None,
                  config_path: str = None,
                  save_fig: bool = True,
                  mode: str = 'run',
-                 data_path: str = None):
+                 data_path: str = None,
+                 data_slice: int = None):
     """
     计算并绘制 MAE(平均绝对误差)
     
@@ -659,7 +660,10 @@ def cal_draw_mae(model_paths: str = None,
             # 计算MAE
             print("📊 计算每步MAE...")
             mae_by_step = calculate_mae_by_step(actual, predicted)
-            dataset_mae = calculate_mae_of_dataset(mae_by_step)
+            if data_slice:
+                dataset_mae = calculate_mae_of_dataset(mae_by_step[:data_slice])
+            else:
+                dataset_mae = calculate_mae_of_dataset(mae_by_step)
             
             # 保存到字典
             maes_dict[label] = dataset_mae
@@ -800,6 +804,7 @@ if __name__ == "__main__":
     parser.add_argument('--labels', type=str, nargs='+', help='labels for each model in the plot', default=None)
     parser.add_argument('--maemode', type=str,  help='save to or load from data path, "load" or "run"', default='run')
     parser.add_argument('--maedatapath', type=str,  help='mae save load data path, "load" or "run"', default='data/predicts/mae_figure_data.json')
+    parser.add_argument('--slice', type=int, help='slice of the test set from start', default=None)
     
     # 配置参数
     parser.add_argument('--cfgpath', type=str, help='config relative full name', default=None)
@@ -840,7 +845,8 @@ if __name__ == "__main__":
                      config_path=args.cfgpath,
                      save_fig=args.savefig,
                      mode=args.maemode,
-                     data_path=args.maedatapath)
+                     data_path=args.maedatapath,
+                     data_slice=args.slice)
 
 """
 最终文章用模型：

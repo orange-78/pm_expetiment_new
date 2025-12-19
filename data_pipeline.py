@@ -50,8 +50,8 @@ class DataSplitter:
                   ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """按时间顺序分割数据"""
         N = len(data)
-        if not (0 < train_ratio < 1 and 0 <= val_ratio < 1 and train_ratio + val_ratio < 1):
-            raise ValueError("Invalid ratios. Require 0<train_ratio<1, 0<=val_ratio<1 and train_ratio+val_ratio<1.")
+        if not (0 <= train_ratio <= 1 and 0 <= val_ratio <= 1 and train_ratio + val_ratio <= 1):
+            raise ValueError("Invalid ratios. Require 0<=train_ratio<=1, 0<=val_ratio<=1 and train_ratio+val_ratio<=1.")
             
         n_train = int(N * train_ratio)
         n_val = int(N * val_ratio)
