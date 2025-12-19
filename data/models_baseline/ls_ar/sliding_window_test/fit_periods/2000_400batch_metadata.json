@@ -1,0 +1,24 @@
+{
+    "batchsize": 3075,
+    "m": 2000,
+    "n": 400,
+    "ar_order": null,
+    "fit_periods": false,
+    "shapes": {
+        "batch_history": [
+            3075,
+            2000,
+            2
+        ],
+        "batch_truth": [
+            3075,
+            400,
+            2
+        ],
+        "batch_predictions": [
+            3075,
+            400,
+            2
+        ]
+    }
+}
