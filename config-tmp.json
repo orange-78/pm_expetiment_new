@@ -1,9 +1,9 @@
 {
   "data": {
     "model_target_dir": "data/models_reproduce",
-    "dataset_path": "data/eopc04_20u24.1962-20260127.csv",  // 19620101 - 20260127, 23403 days
-    "train_ratio": 0.68671,                                 // 19620101 - 20051231, 16071 days
-    "val_ratio": 0.15605,                                   // 20060101 - 20151231, 3652  days
+    "dataset_path": "data/eopc04_14_IAU2000.62-now.csv",
+    "train_ratio": 0.70,
+    "val_ratio": 0.15,
     "val_mix": false,
     "residual_type": "both",
     "use_scaler": true,
@@ -22,17 +22,18 @@
     "attndim": 64,
     "dropout0": 0.3,
     "dropout1": 0.3,
-    "dropout2": 0.2
+    "dropout2": 0.2,
+    "model_type": "simple_lstm"  // 'lstm_attention', 'simple_lstm'
   },
   "training": {
-    "model_target_dir": "data/models_reproduce/mae3",
-    "learning_rate": 3e-5,
+    "model_target_dir": "data/models_baseline/mse0",
+    "learning_rate": 4e-4,
     "batch_size": 256,
     "epochs": 50,
     "shuffle": true,
     "early_stop": 5,
     "monitor": "val_integrated_mae",  // 'val_loss','val_mean_absolute_error','val_mean_squared_error','val_root_mean_squared_error', 'val_integrated_mae', 'val_integrated_mse'
-    "loss": "mae",  // 'mae','mse','mae_freq','mse-corr','mae-corr','huber-corr','focal-mse','quantile','fft','phase', 'int', 'mixed-int'
+    "loss": "mse",  // 'mae','mse','mae_freq','mse-corr','mae-corr','huber-corr','focal-mse','quantile','fft','phase', 'int', 'mixed-int'
     "metrics": "loss",
     "alpha": 1e-3,
     "base_loss": "mse",
