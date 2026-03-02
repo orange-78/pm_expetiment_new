@@ -398,22 +398,79 @@ def val_main(repo_path: str, model_name: str, data_path: str):
     data_manager.save()
     print(f"\n 已保存评估结果至 {data_manager.get_excel_path()}")
 
-def plot_main(repo_path: str, data_path: str):
+def plot_main(repo_path: str, data_path: str, metric: str='mae'):
     """绘图主函数"""
     data = DataManager(repo_path, excel_filename=data_path)
+    metric_metadata: dict = {
+        'mae': {
+            'column_name': 'overall_mae',
+            'title': '',
+            'metric_name': 'MAE',
+            'unit': 'mas',
+            'scale': 1000.0,
+            'figsize': (16, 8),
+            'reverse_colorbar_num': True,
+            'reverse_colorbar_color': False,
+            'cmap': 'viridis',
+            'font_size': 28,
+            'vrange': (0.0, 115.0),
+        },
+        'corr': {
+            'column_name': 'overall_pcc',
+            'title': '',
+            'metric_name': 'Corrcoef',
+            'unit': '',
+            'scale': 1.0,
+            'figsize': (16, 8),
+            'reverse_colorbar_num': False,
+            'reverse_colorbar_color': True,
+            'cmap': 'viridis',
+            'font_size': 28,
+            'vrange': (0.47, 0.9999),
+        },
+        'tax': {
+            'column_name': 'feature_0_within_tol',
+            'title': '',
+            'metric_name': 'Within 10% Tolerance',
+            'unit': '',
+            'scale': 1.0,
+            'figsize': (16, 8),
+            'reverse_colorbar_num': False,
+            'reverse_colorbar_color': True,
+            'cmap': 'viridis',
+            'font_size': 28,
+            'vrange': (0.35, 1.0),
+        },
+        'tay': {
+            'column_name': 'feature_1_within_tol',
+            'title': '',
+            'metric_name': 'Within 10% Tolerance',
+            'unit': '',
+            'scale': 1.0,
+            'figsize': (16, 8),
+            'reverse_colorbar_num': False,
+            'reverse_colorbar_color': True,
+            'cmap': 'viridis',
+            'font_size': 28,
+            'vrange': (0.35, 1.0),
+        },
+    }
+    if metric not in metric_metadata.keys():
+        print(f"error! input metric name: {metric} unknown!")
+        return
     plot_grid_graph(data.get_column_data('lookback'),
                     data.get_column_data('steps'),
-                    data.get_column_data('overall_pcc'),
-                    title='',
-                    metric_name='Corrcoef',
-                    unit='',
-                    scale=1.0,
-                    figsize=(16, 8),
-                    reverse_colorbar_num=False,
-                    reverse_colorbar_color=True,
-                    cmap='viridis',
-                    font_size=28,
-                    vrange=(0.701, 0.999))
+                    data.get_column_data(metric_metadata[metric]['column_name']),
+                    title=metric_metadata[metric]['title'],
+                    metric_name=metric_metadata[metric]['metric_name'],
+                    unit=metric_metadata[metric]['unit'],
+                    scale=metric_metadata[metric]['scale'],
+                    figsize=metric_metadata[metric]['figsize'],
+                    reverse_colorbar_num=metric_metadata[metric]['reverse_colorbar_num'],
+                    reverse_colorbar_color=metric_metadata[metric]['reverse_colorbar_color'],
+                    cmap=metric_metadata[metric]['cmap'],
+                    font_size=metric_metadata[metric]['font_size'],
+                    vrange=metric_metadata[metric]['vrange'])
     
 def predict_main(model_path: str, csv_path: str, 
                  save_path: str = None):
@@ -794,6 +851,7 @@ if __name__ == "__main__":
     parser.add_argument('--repopath', type=str, help='repo to evaluate', default='')
     parser.add_argument('--modelname', type=str, help='model name to scan', default='')
     parser.add_argument('--dataname', type=str, help='xlsx file name', default='evaluation')
+    parser.add_argument('--metric', type=str, help='plot metric', default='mae')
     
     # 预测参数
     parser.add_argument('--modelpath', type=str, help='prediction model path', default='')
@@ -832,7 +890,8 @@ if __name__ == "__main__":
                  data_path=args.dataname)
     elif args.action == "plot":
         plot_main(repo_path=args.repopath,
-                  data_path=args.dataname)
+                  data_path=args.dataname,
+                  metric=args.metric)
     elif args.action == "predict":
         predict_main(model_path=args.modelpath,
                      csv_path=args.csvpath)
