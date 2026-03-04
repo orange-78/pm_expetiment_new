@@ -917,15 +917,15 @@ if __name__ == "__main__":
     import os
     from data_pipeline import DataPipeline
     from config import DATA_CONFIG
-    OUTPUT_DIR = 'data/models_baseline/ls_ar/'
+    OUTPUT_DIR = 'data/models_baseline/ls_ar/new'
     
     # 创建输出目录
-    os.makedirs('data/models_baseline/ls_ar', exist_ok=True)
+    os.makedirs('data/models_baseline/ls_ar.mew', exist_ok=True)
     
     # 加载数据
     data_pipeline = DataPipeline(DATA_CONFIG)
     _, raw_history_data, test_data = data_pipeline.splitter.time_split(
-        data_pipeline.loader.load_xy_from_csv(data_pipeline.config.dataset_path), 0.0, 0.85
+        data_pipeline.loader.load_xy_from_csv(data_pipeline.config.dataset_path), 0.0, 0.68671+0.15605
     )
     history_data = raw_history_data[-3650:]
     

@@ -219,7 +219,8 @@ class PoleDataProcessor:
 if __name__ == "__main__":
     # 设置路径
     prediction_folder = "data/models_baseline/IERS/BulletinA16-25"  # 预测数据文件夹
-    history_file = "data/eopc04_14_IAU2000.62-now.csv"     # 历史真实数据文件
+    # history_file = "data/eopc04_14_IAU2000.62-now.csv"     # 历史真实数据文件
+    history_file = "data/eopc04_20u24.1962-20260127.csv"
     
     # 创建处理器实例
     processor = PoleDataProcessor(prediction_folder, history_file)
@@ -231,7 +232,7 @@ if __name__ == "__main__":
     true_data = processor.load_true_data()
     
     # 保存数组
-    processor.save_arrays('data/models_baseline/IERS/BulletinA16-25/pred_data.npy', 'data/models_baseline/IERS/BulletinA16-25/true_data.npy')
+    processor.save_arrays('data/models_baseline/IERS/BulletinA16-25/pred_data-new.npy', 'data/models_baseline/IERS/BulletinA16-25/true_data-new.npy')
     
     # 后续可以这样加载保存的数组
     # processor.load_arrays('pred_data.npy', 'true_data.npy')
@@ -243,7 +244,7 @@ if __name__ == "__main__":
     json_str = json.dumps(mae_list)  # 转换为JSON字符串
 
     # 保存到文件
-    with open('data/models_baseline/IERS/BulletinA16-25/mae_result.json', 'w') as f:
+    with open('data/models_baseline/IERS/BulletinA16-25/mae_result-new.json', 'w') as f:
         json.dump(mae_list, f, indent=2)
     
     # 计算一些基本统计信息

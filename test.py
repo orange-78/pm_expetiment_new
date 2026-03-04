@@ -67,7 +67,7 @@ def extract_and_print_mae_table(
     indices: List[int],
     table_format: str = 'grid',
     show_stats: bool = True,
-    show_rms: bool = False
+    show_rms: bool = True
 ):
     """
     从JSON文件中提取指定索引的MAE数据并打印为表格
