@@ -22,7 +22,8 @@ def cal_draw_mae(model_paths: str = None,
                  save_fig: bool = True,
                  mode: str = 'run',
                  data_path: str = None,
-                 data_slice: int = None):
+                 data_slice: int = None,
+                 max_y: int = None):
     """
     计算并绘制 MAE(平均绝对误差)
     
@@ -249,7 +250,8 @@ def cal_draw_mae(model_paths: str = None,
     plot_mae_by_step(
         maes_dict,
         strlist=labels,  # 按照输入顺序显示图例
-        shape=(7, 5)
+        shape=(7, 5),
+        max_y=max_y
     )
     
     # === 5️⃣ 保存图像(可选)===
@@ -548,20 +550,21 @@ if __name__ == "__main__":
     main_data_file = "data/predicts/new/mae_data.json"
 
     # 运行MAE计算和绘制程序
-    mode = 'run'  # 'run' or 'load'
     models = [
         "data/models_reproduce/mse-int4/1400_100/model-bestmetric.keras",
-        "data/models_reproduce/mse-int4/800_400/model-bestmetric.keras",
-        "data/models_reproduce/mse-int4/800_600/model-bestmetric.keras",
+        "data/models_reproduce/mse-corr4/1000_400/model-bestmetric.keras",
+        "data/models_reproduce/mse3/1200_600/model-bestmetric.keras",
         "data/models_reproduce/mse-int4/1200_900/model-bestmetric.keras",
-        "data/models_reproduce/mse-int4/1200_1100/model-bestmetric.keras"
+        "data/models_reproduce/mse-int4/1200_1100/model-bestmetric.keras",
+        "data/models_baseline/lstm-only1/1000_600/model-bestmetric.keras"
     ]
     labels = [
         "100",
         "400",
         "600",
         "900",
-        "1100"
+        "1100",
+        "LSTM-only"
     ]
     cal_draw_mae(model_paths=models,
                     labels=labels,
@@ -596,11 +599,12 @@ if __name__ == "__main__":
                     save_fig=False,
                     mode='load',
                     data_path=main_data_file,
-                    data_slice=100)
+                    data_slice=100,
+                    max_y=35.0)
     
     # 运行MAE表格计算并打印程序
     extract_and_print_mae_table(data_path=main_data_file,
-                                    indices=[10, 30, 100, 365, 800, 1100],
+                                    indices=[10, 30, 100, 365, 600, 800, 1100],
                                     table_format='grid',
                                     show_stats=True,
                                     show_rms=True,

@@ -42,7 +42,8 @@ def plot_mae_by_step(
     strlist: Optional[List[str]] = None,
     shape: Optional[Tuple[int, int]] = None,
     orientation: str = 'horizontal',
-    scale: float = 1000.0
+    scale: float = 1000.0,
+    max_y: float = None
 ):
     """
     绘制每步的累计平均误差曲线
@@ -51,6 +52,7 @@ def plot_mae_by_step(
     :param shape: 可选，指定每个子图的大小 (width, height)
     :param orientation: 子图排列方向，'horizontal'(横置)或'vertical'(纵置)
     :param scale: 可选，纵轴数值缩放比例，默认为1.0
+    :param max_y: 可选，y轴最大值限制，超过该值的部分将被裁切
     """
     # 确定绘图顺序
     if strlist is not None:
@@ -76,7 +78,7 @@ def plot_mae_by_step(
         if shape is not None:
             figsize = (shape[0] * 2, shape[1])
         else:
-            figsize = (14, 5)
+            figsize = (14, 7)
         sharex, sharey = False, True
     else:  # vertical
         nrows, ncols = 2, 1
@@ -158,6 +160,14 @@ def plot_mae_by_step(
     ax2.set_title('PMY', fontsize=12, fontweight='bold')
     ax2.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
     ax2.set_xlim(-0.5, max_steps - 0.5)
+    
+    # 应用y轴最大值限制
+    if max_y is not None:
+        ax1.set_ylim(top=max_y)
+        ax2.set_ylim(top=max_y)
+    
+    ax1.set_ylim(bottom=0)
+    ax2.set_ylim(bottom=0)
     
     # 根据排列方向设置轴标签和图例
     if orientation == 'horizontal':
